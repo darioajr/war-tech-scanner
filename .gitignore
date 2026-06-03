@@ -1,0 +1,9 @@
+target/
+.idea/
+*.iml
+.DS_Store
+.metadata/
+.vscode/
+
+# MTA config local (paths específicos da máquina — use o .example como base)
+war-tech-scanner-config.json

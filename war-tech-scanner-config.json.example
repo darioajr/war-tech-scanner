@@ -1,0 +1,49 @@
+{
+  "mtaInstallations": [
+    {
+      "label": "MTA 7.2 - Local",
+      "type": "BARE_METAL",
+      "path": "/opt/mta-7.2/bin/mta-cli"
+    },
+    {
+      "label": "MTA 7.2 - Docker",
+      "type": "CONTAINER",
+      "image": "registry.redhat.io/mta/mta-cli-rhel9:7.2",
+      "containerEngine": "docker"
+    },
+    {
+      "label": "MTA 7.2 - Podman",
+      "type": "CONTAINER",
+      "image": "registry.redhat.io/mta/mta-cli-rhel9:7.2",
+      "containerEngine": "podman"
+    },
+    {
+      "label": "MTA 6.2 - Docker",
+      "type": "CONTAINER",
+      "image": "registry.redhat.io/mta/mta-cli-rhel8:6.2",
+      "containerEngine": "docker"
+    },
+    {
+      "label": "MTA 6.2 - Podman",
+      "type": "CONTAINER",
+      "image": "registry.redhat.io/mta/mta-cli-rhel8:6.2",
+      "containerEngine": "podman"
+    },
+    {
+      "label": "MTA 7.2 - OpenShift",
+      "type": "OPENSHIFT",
+      "namespace": "mta",
+      "hubRoute": "https://mta-mta.apps.cluster.example.com",
+      "operatorChannel": "stable-v7",
+      "operatorCatalog": "redhat-operators"
+    },
+    {
+      "label": "MTA 6.2 - OpenShift",
+      "type": "OPENSHIFT",
+      "namespace": "mta",
+      "hubRoute": "https://mta-mta.apps.cluster.example.com",
+      "operatorChannel": "stable-v6",
+      "operatorCatalog": "redhat-operators"
+    }
+  ]
+}

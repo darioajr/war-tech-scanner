@@ -1,0 +1,46 @@
+name: "✨ Feature Request"
+description: Sugira uma melhoria ou nova funcionalidade
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado pela sugestão! Descreva o que você gostaria de ver no projeto.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema ou necessidade
+      description: Qual problema esta feature resolveria?
+      placeholder: "Quando analiso um EAR com X, não consigo Y..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solução proposta
+      description: Como você imagina que deveria funcionar?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+      description: Existe alguma forma de fazer isso hoje? Por que não é suficiente?
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - Detecção de tecnologias
+        - Dicas de migração (CompatibilityAdvisor)
+        - Sugestão de comando MTA
+        - Saída / relatório
+        - Performance
+        - Documentação
+        - Outro
+    validations:
+      required: true
