@@ -8,11 +8,11 @@
 [![FOSSA Status](https://app.fossa.com/api/projects/custom%2B50664%2Fgit%40github.com%3Adarioajr%2Fwar-tech-scanner.git.svg?type=shield&issueType=license)](https://app.fossa.com/projects/custom%2B50664%2Fgit%40github.com%3Adarioajr%2Fwar-tech-scanner.git?ref=badge_shield&issueType=license)
 [![Java](https://img.shields.io/badge/java-21%2B-orange.svg)](https://adoptium.net)
 
-CLI em Java para detectar tecnologias em arquivos `.war`, `.ear`, `.jar` e `.rar`, com foco em inventário para migração JBoss EAP / Jakarta EE.
+Java CLI to detect technologies in `.war`, `.ear`, `.jar`, and `.rar` files, focused on inventory for JBoss EAP / Jakarta EE migration.
 
-## Tecnologias detectadas
+## Detected technologies
 
-| Tecnologia | Fontes de evidência |
+| Technology | Evidence sources |
 |---|---|
 | EJB | `@Stateless`, `@Stateful`, `@MessageDriven`, `ejb-jar.xml`, `jboss-ejb3.xml` |
 | JPA | `@Entity`, `@PersistenceContext`, `persistence.xml` |
@@ -25,16 +25,16 @@ CLI em Java para detectar tecnologias em arquivos `.war`, `.ear`, `.jar` e `.rar
 | Spring | `@Component`, `@Service`, `applicationcontext.xml`, `spring-*.jar` |
 | Struts | `struts.xml`, `struts-*.jar` |
 
-A detecção usa três camadas:
+Detection uses three layers:
 
-1. **Bytecode** — leitura de `.class` com ASM para encontrar anotações e tipos `javax.*`, `jakarta.*`, `org.hibernate.*`, etc.
-2. **Descritores XML** — `persistence.xml`, `ejb-jar.xml`, `hibernate.cfg.xml`, `*.hbm.xml`, `beans.xml`, `faces-config.xml`, `web.xml`, etc.
-3. **Bibliotecas** — nomes de JARs dentro de `WEB-INF/lib` e arquivos aninhados.
+1. **Bytecode** — reading `.class` files with ASM to find annotations and `javax.*`, `jakarta.*`, `org.hibernate.*` types, etc.
+2. **XML descriptors** — `persistence.xml`, `ejb-jar.xml`, `hibernate.cfg.xml`, `*.hbm.xml`, `beans.xml`, `faces-config.xml`, `web.xml`, etc.
+3. **Libraries** — JAR names inside `WEB-INF/lib` and nested archives.
 
-## Pré-requisitos
+## Prerequisites
 
 - Java 21+
-- Maven 3.9+ (apenas para build)
+- Maven 3.9+ (build only)
 
 ## Build
 
@@ -42,62 +42,62 @@ A detecção usa três camadas:
 mvn -DskipTests package
 ```
 
-O artefato gerado é `target/war-tech-scanner-0.1.0-SNAPSHOT.jar` (fat JAR com todas as dependências).
+The generated artifact is `target/war-tech-scanner-0.1.0-SNAPSHOT.jar` (fat JAR with all dependencies).
 
-## Uso
+## Usage
 
 ```
-java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar <artifact> [opções]
+java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar <artifact> [options]
 ```
 
-### Parâmetros
+### Parameters
 
-| Parâmetro | Tipo | Descrição |
+| Parameter | Type | Description |
 |---|---|---|
-| `<artifact>` | posicional | Arquivo `.war`, `.ear`, `.jar` ou `.rar` a analisar |
-| `--json` | flag | Imprime resultado em JSON (desativa UI rica) |
-| `--no-nested` | flag | Não analisa arquivos aninhados (JARs dentro de WARs, etc.) |
-| `--max-evidence=N` | inteiro | Máximo de evidências listadas por tecnologia (padrão: `5`) |
-| `--target-eap=X.Y` | string | Versão alvo do JBoss EAP (ex: `7.4`, `8.0`, `8.1`) |
-| `--target-java=N` | inteiro | Versão alvo do Java (ex: `11`, `17`, `21`) |
-| `--mta-config=PATH` | caminho | Arquivo de configuração do MTA. **Obrigatório** para gerar sugestões de comando `mta-cli` |
-| `-h`, `--help` | flag | Exibe ajuda |
-| `-V`, `--version` | flag | Exibe versão |
+| `<artifact>` | positional | `.war`, `.ear`, `.jar`, or `.rar` file to analyze |
+| `--json` | flag | Prints result as JSON (disables rich UI) |
+| `--no-nested` | flag | Does not analyze nested archives (JARs inside WARs, etc.) |
+| `--max-evidence=N` | integer | Max evidences listed per technology (default: `5`) |
+| `--target-eap=X.Y` | string | Target JBoss EAP version (e.g. `7.4`, `8.0`, `8.1`) |
+| `--target-java=N` | integer | Target Java version (e.g. `11`, `17`, `21`) |
+| `--mta-config=PATH` | path | MTA configuration file. **Required** to generate `mta-cli` command suggestions |
+| `-h`, `--help` | flag | Shows help |
+| `-V`, `--version` | flag | Shows version |
 
-### Exemplos
+### Examples
 
-**Scan básico com UI rica:**
+**Basic scan with rich UI:**
 ```bash
-java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar minha-app.war
+java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar my-app.war
 ```
 
-**Saída JSON:**
+**JSON output:**
 ```bash
-java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar minha-app.war --json > report.json
+java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar my-app.war --json > report.json
 ```
 
-**Análise de migração para EAP 8.1 + Java 21:**
+**Migration analysis for EAP 8.1 + Java 21:**
 ```bash
-java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar minha-app.ear \
+java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar my-app.ear \
   --target-eap=8.1 \
   --target-java=21
 ```
 
-**Gerar sugestão de comando MTA:**
+**Generate MTA command suggestion:**
 ```bash
-java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar minha-app.ear \
+java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar my-app.ear \
   --target-eap=8.1 \
   --target-java=21 \
   --mta-config war-tech-scanner-config.json \
   --json > report.json
 ```
 
-**Sem analisar JARs aninhados:**
+**Without analyzing nested JARs:**
 ```bash
-java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar minha-app.war --no-nested
+java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar my-app.war --no-nested
 ```
 
-**Inventário em massa:**
+**Bulk inventory:**
 ```bash
 find /apps -type f \( -name "*.war" -o -name "*.ear" \) \
   -exec java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar {} \
@@ -105,11 +105,11 @@ find /apps -type f \( -name "*.war" -o -name "*.ear" \) \
   > inventory.jsonl
 ```
 
-## Sugestão de comando MTA
+## MTA command suggestion
 
-Quando `--mta-config` é informado, o scanner executa cada instalação MTA configurada para descobrir os `sources`, `targets` e `providers` disponíveis, cruza com as tecnologias detectadas e gera um comando pronto por instalação.
+When `--mta-config` is provided, the scanner runs each configured MTA installation to discover the available `sources`, `targets`, and `providers`, cross-references them with the detected technologies, and generates a ready-to-run command per installation.
 
-### Arquivo de configuração (`war-tech-scanner-config.json`)
+### Configuration file (`war-tech-scanner-config.json`)
 
 ```json
 {
@@ -155,20 +155,20 @@ Quando `--mta-config` é informado, o scanner executa cada instalação MTA conf
 }
 ```
 
-### Tipos de instalação
+### Installation types
 
 #### `BARE_METAL`
 
-Executa o binário `mta-cli` instalado localmente.
+Runs the locally installed `mta-cli` binary.
 
-| Campo | Obrigatório | Descrição |
+| Field | Required | Description |
 |---|---|---|
-| `path` | sim | Caminho absoluto para o binário `mta-cli` |
+| `path` | yes | Absolute path to the `mta-cli` binary |
 
-Comando gerado:
+Generated command:
 ```bash
 /opt/mta-7.2/bin/mta-cli analyze \
-  --input minha-app.ear \
+  --input my-app.ear \
   --output ./mta-report \
   --target eap81,java21 \
   --source ejb,jpa,hibernate
@@ -176,23 +176,23 @@ Comando gerado:
 
 #### `CONTAINER`
 
-Executa via Docker ou Podman usando imagens oficiais da Red Hat em `registry.redhat.io`.
+Runs via Docker or Podman using official Red Hat images from `registry.redhat.io`.
 
-| Campo | Obrigatório | Padrão | Descrição |
+| Field | Required | Default | Description |
 |---|---|---|---|
-| `image` | sim | — | Imagem do MTA CLI. Use `registry.redhat.io/mta/mta-cli-rhel9:<versão>` (MTA 7.x) ou `registry.redhat.io/mta/mta-cli-rhel8:<versão>` (MTA 6.x) |
-| `containerEngine` | não | `docker` | Engine de container: `docker` ou `podman` |
+| `image` | yes | — | MTA CLI image. Use `registry.redhat.io/mta/mta-cli-rhel9:<version>` (MTA 7.x) or `registry.redhat.io/mta/mta-cli-rhel8:<version>` (MTA 6.x) |
+| `containerEngine` | no | `docker` | Container engine: `docker` or `podman` |
 
-> **Atenção:** `registry.redhat.io` exige autenticação com conta Red Hat (<https://access.redhat.com>).
+> **Note:** `registry.redhat.io` requires authentication with a Red Hat account (<https://access.redhat.com>).
 
-Comando gerado:
+Generated command:
 ```bash
 docker login registry.redhat.io
 docker run --rm \
-  -v minha-app.ear:/app/input/minha-app.ear:ro,z \
+  -v my-app.ear:/app/input/my-app.ear:ro,z \
   -v $(pwd)/mta-report:/app/output:z \
   registry.redhat.io/mta/mta-cli-rhel9:7.2 analyze \
-  --input /app/input/minha-app.ear \
+  --input /app/input/my-app.ear \
   --output /app/output \
   --target eap81,java21 \
   --source ejb,jpa
@@ -200,18 +200,18 @@ docker run --rm \
 
 #### `OPENSHIFT`
 
-Instala o operador MTA via OLM a partir do catálogo `redhat-operators` e cria a análise via MTA Hub API.
+Installs the MTA operator via OLM from the `redhat-operators` catalog and creates the analysis through the MTA Hub API.
 
-| Campo | Obrigatório | Padrão | Descrição |
+| Field | Required | Default | Description |
 |---|---|---|---|
-| `namespace` | não | `mta` | Namespace onde o operador será instalado |
-| `hubRoute` | sim | — | URL base do MTA Hub exposta pelo operador |
-| `operatorChannel` | não | `stable-v7` | Canal OLM: `stable-v7` (MTA 7.x) ou `stable-v6` (MTA 6.x) |
-| `operatorCatalog` | não | `redhat-operators` | CatalogSource do OLM |
+| `namespace` | no | `mta` | Namespace where the operator is installed |
+| `hubRoute` | yes | — | Base URL of the MTA Hub exposed by the operator |
+| `operatorChannel` | no | `stable-v7` | OLM channel: `stable-v7` (MTA 7.x) or `stable-v6` (MTA 6.x) |
+| `operatorCatalog` | no | `redhat-operators` | OLM CatalogSource |
 
-Comando gerado (dois passos):
+Generated command (two steps):
 ```bash
-# Passo 1 — instalar o operador MTA via OLM
+# Step 1 — install the MTA operator via OLM
 oc apply -f - <<'EOF'
 apiVersion: v1
 kind: Namespace
@@ -239,11 +239,11 @@ spec:
   sourceNamespace: openshift-marketplace
 EOF
 
-# Passo 2 — criar análise via MTA Hub API (aguardar o operador estar Running)
+# Step 2 — create analysis via MTA Hub API (wait for the operator to be Running)
 MTA_HUB=https://mta-mta.apps.cluster.example.com
 curl -s -X POST "$MTA_HUB/hub/applications" \
   -H "Content-Type: application/json" \
-  -d '{"name":"minha-app","bucket":{"name":"minha-app"}}' | tee /tmp/mta-app.json
+  -d '{"name":"my-app","bucket":{"name":"my-app"}}' | tee /tmp/mta-app.json
 
 APP_ID=$(jq -r '.id' /tmp/mta-app.json)
 curl -s -X POST "$MTA_HUB/hub/analyses" \
@@ -255,9 +255,9 @@ curl -s -X POST "$MTA_HUB/hub/analyses" \
   }'
 ```
 
-### Descoberta automática de sources/targets
+### Automatic source/target discovery
 
-Quando o binário (BARE_METAL) ou a imagem (CONTAINER) está disponível localmente, o scanner executa:
+When the binary (BARE_METAL) or the image (CONTAINER) is available locally, the scanner runs:
 
 ```
 mta-cli analyze --list-sources
@@ -265,9 +265,9 @@ mta-cli analyze --list-targets
 mta-cli analyze --list-providers
 ```
 
-Os tokens retornados são cruzados com as tecnologias detectadas para produzir um comando com apenas os `--source` e `--target` realmente suportados pela versão instalada. Se o binário/imagem não estiver disponível, o comando é gerado com base em mapeamentos estáticos e uma nota de aviso é incluída.
+The returned tokens are cross-referenced with the detected technologies to produce a command with only the `--source` and `--target` values actually supported by the installed version. If the binary/image is not available, the command is generated from static mappings and a warning note is included.
 
-### Estrutura do JSON de saída (`--json`)
+### Output JSON structure (`--json`)
 
 ```json
 {
@@ -282,7 +282,7 @@ Os tokens retornados são cruzados com as tecnologias detectadas para produzir u
   "classesWithEvidence": ["com/example/MyBean.class"],
   "warnings": [],
   "migrationHints": [
-    "[EAP 8.1] EJB: substituir javax.ejb.* por jakarta.ejb.*"
+    "[EAP 8.1] EJB: replace javax.ejb.* with jakarta.ejb.*"
   ],
   "mtaSuggestions": [
     {
@@ -298,9 +298,9 @@ Os tokens retornados são cruzados com as tecnologias detectadas para produzir u
 }
 ```
 
-## Publicação no Maven Central
+## Publishing to Maven Central
 
-O `pom.xml` já inclui metadados exigidos, `sources`, `javadocs`, assinatura GPG e `central-publishing-maven-plugin`.
+The `pom.xml` already includes the required metadata, `sources`, `javadocs`, GPG signing, and the `central-publishing-maven-plugin`.
 
 Configure `~/.m2/settings.xml`:
 
@@ -316,19 +316,19 @@ Configure `~/.m2/settings.xml`:
 </settings>
 ```
 
-Depois:
+Then:
 
 ```bash
 mvn clean verify
 mvn deploy -DskipTests
 ```
 
-## Licenças
+## Licenses
 
-Este projeto é distribuído sob a **Apache License 2.0**. Veja [LICENSE](LICENSE).
+This project is distributed under the **Apache License 2.0**. See [LICENSE](LICENSE).
 
-As dependências de terceiros e suas licenças estão listadas em [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+Third-party dependencies and their licenses are listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
 
-A conformidade de licenças das dependências é monitorada pelo [FOSSA](https://fossa.com):
+Dependency license compliance is monitored by [FOSSA](https://fossa.com):
 
 [![FOSSA Status](https://app.fossa.com/api/projects/custom%2B50664%2Fgit%40github.com%3Adarioajr%2Fwar-tech-scanner.git.svg?type=large&issueType=license)](https://app.fossa.com/projects/custom%2B50664%2Fgit%40github.com%3Adarioajr%2Fwar-tech-scanner.git?ref=badge_large&issueType=license)
