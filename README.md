@@ -6,6 +6,7 @@
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=darioajr_war-tech-scanner&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=darioajr_war-tech-scanner)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/java-21%2B-orange.svg)](https://adoptium.net)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdarioajr%2Fwar-tech-scanner.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdarioajr%2Fwar-tech-scanner?ref=badge_shield)
 
 CLI em Java para detectar tecnologias em arquivos `.war`, `.ear`, `.jar` e `.rar`, com foco em inventário para migração JBoss EAP / Jakarta EE.
 
@@ -327,3 +328,7 @@ mvn deploy -DskipTests
 Este projeto é distribuído sob a **Apache License 2.0**. Veja [LICENSE](LICENSE).
 
 As dependências de terceiros e suas licenças estão listadas em [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdarioajr%2Fwar-tech-scanner.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdarioajr%2Fwar-tech-scanner?ref=badge_large)
