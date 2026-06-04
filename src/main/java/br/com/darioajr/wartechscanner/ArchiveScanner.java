@@ -18,7 +18,9 @@ package br.com.darioajr.wartechscanner;
 import org.objectweb.asm.ClassReader;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -29,13 +31,33 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.zip.ZipFile;
 
 public final class ArchiveScanner {
+
+    // Decompression-bomb guards (S5042): cap per-entry and total inflated size,
+    // and the number of entries, so a malicious archive cannot exhaust memory.
+    private static final long MAX_ENTRY_BYTES = 512L * 1024 * 1024;        // 512 MB / entry
+    private static final long MAX_TOTAL_BYTES = 8L * 1024 * 1024 * 1024;   // 8 GB total inflated
+    private static final int  MAX_ENTRIES     = 200_000;
+
     private final boolean scanNestedArchives;
     private final ScanProgressListener listener;
+
+    /** Per-scan inflation budget, shared across the (concurrent) nested tasks. */
+    private static final class Limits {
+        final AtomicLong totalBytes = new AtomicLong();
+        final AtomicInteger entryCount = new AtomicInteger();
+
+        void countEntry() throws IOException {
+            if (entryCount.incrementAndGet() > MAX_ENTRIES) {
+                throw new IOException("Archive has too many entries (possible decompression bomb)");
+            }
+        }
+    }
 
     public ArchiveScanner(boolean scanNestedArchives) {
         this(scanNestedArchives, ScanProgressListener.NOOP);
@@ -54,7 +76,7 @@ public final class ArchiveScanner {
         result.artifact = artifact.toAbsolutePath().toString();
         result.artifactType = extensionOf(artifact);
         var technologies = TechnologyCatalog.create();
-        scanZip(artifact, "", result, technologies);
+        scanZip(artifact, "", result, technologies, new Limits());
         technologies.values().stream()
                 .filter(t -> !t.evidences.isEmpty())
                 .forEach(result.technologies::add);
@@ -62,7 +84,7 @@ public final class ArchiveScanner {
         return result;
     }
 
-    private void scanZip(Path file, String prefix, ScanResult result, Map<String, DetectedTechnology> techs) throws IOException {
+    private void scanZip(Path file, String prefix, ScanResult result, Map<String, DetectedTechnology> techs, Limits lim) throws IOException {
         try (var zip = new ZipFile(file.toFile());
              var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
@@ -75,20 +97,21 @@ public final class ArchiveScanner {
 
             for (var entry : entries) {
                 if (entry.isDirectory()) continue;
+                lim.countEntry();
                 var name = prefix + entry.getName();
                 inspectEntryName(name, result, techs);
                 listener.onProgress(name, processed.incrementAndGet(), total);
 
                 if (name.endsWith(".class")) {
-                    var bytes = zip.getInputStream(entry).readAllBytes();
+                    var bytes = readBounded(zip.getInputStream(entry), lim);
                     futures.add(executor.submit(() -> inspectClass(name, bytes, result, techs)));
                 } else if (scanNestedArchives && isArchive(name)) {
                     result.libraries.add(name);
                     listener.onNestedArchive(name);
-                    var bytes = zip.getInputStream(entry).readAllBytes();
+                    var bytes = readBounded(zip.getInputStream(entry), lim);
                     futures.add(executor.submit(() -> {
                         try {
-                            scanNestedArchive(bytes, name + "!", result, techs);
+                            scanNestedArchive(bytes, name + "!", result, techs, lim);
                         } catch (Exception e) {
                             result.warnings.add("Error processing nested archive " + name + ": " + e.getMessage());
                         }
@@ -104,23 +127,46 @@ public final class ArchiveScanner {
         }
     }
 
-    private void scanNestedArchive(byte[] bytes, String prefix, ScanResult result, Map<String, DetectedTechnology> techs) {
+    private void scanNestedArchive(byte[] bytes, String prefix, ScanResult result, Map<String, DetectedTechnology> techs, Limits lim) {
         try (var jis = new JarInputStream(new ByteArrayInputStream(bytes))) {
             JarEntry entry;
             while ((entry = jis.getNextJarEntry()) != null) {
                 if (entry.isDirectory()) continue;
+                lim.countEntry();
                 var name = prefix + entry.getName();
                 inspectEntryName(name, result, techs);
                 if (entry.getName().endsWith(".class")) {
-                    inspectClass(name, jis.readAllBytes(), result, techs);
+                    inspectClass(name, readBounded(jis, lim), result, techs);
                 } else if (scanNestedArchives && isArchive(entry.getName())) {
                     result.libraries.add(name);
-                    scanNestedArchive(jis.readAllBytes(), name + "!", result, techs);
+                    scanNestedArchive(readBounded(jis, lim), name + "!", result, techs, lim);
                 }
             }
         } catch (Exception e) {
             result.warnings.add("Could not read nested archive " + prefix + ": " + e.getMessage());
         }
+    }
+
+    /**
+     * Reads a single entry stream while enforcing the per-entry and total
+     * inflation caps, guarding against decompression bombs (S5042).
+     */
+    private static byte[] readBounded(InputStream in, Limits lim) throws IOException {
+        var out = new ByteArrayOutputStream();
+        var chunk = new byte[8192];
+        long entryBytes = 0;
+        int n;
+        while ((n = in.read(chunk)) != -1) {
+            entryBytes += n;
+            if (entryBytes > MAX_ENTRY_BYTES) {
+                throw new IOException("Entry exceeds " + MAX_ENTRY_BYTES + " bytes (possible decompression bomb)");
+            }
+            if (lim.totalBytes.addAndGet(n) > MAX_TOTAL_BYTES) {
+                throw new IOException("Archive exceeds " + MAX_TOTAL_BYTES + " bytes inflated (possible decompression bomb)");
+            }
+            out.write(chunk, 0, n);
+        }
+        return out.toByteArray();
     }
 
     private void inspectEntryName(String name, ScanResult result, Map<String, DetectedTechnology> techs) {
