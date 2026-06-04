@@ -47,7 +47,8 @@ jobs:
         run: |
           ./mvnw -B clean verify sonar:sonar \
             -Dsonar.projectKey=darioajr_war-tech-scanner \
-            -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.scanner.skipJreProvisioning=true
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
