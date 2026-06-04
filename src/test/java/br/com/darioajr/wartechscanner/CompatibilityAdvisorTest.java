@@ -124,4 +124,68 @@ class CompatibilityAdvisorTest {
         assertFalse(new MigrationTarget("8.0", 0).isEap7());
         assertFalse(new MigrationTarget("6.4", 0).isEap7());
     }
+
+    @Test
+    void migrationTarget_invalidVersionIsNeitherEap7Nor8() {
+        var t = new MigrationTarget("not-a-number", 0);
+        assertFalse(t.isEap7());
+        assertFalse(t.isEap8OrLater());
+        assertTrue(t.hasEapVersion());
+        assertFalse(t.hasJavaVersion());
+        assertTrue(new MigrationTarget(null, 21).hasJavaVersion());
+    }
+
+    // ── Full technology coverage (exercises every per-tech branch) ────────────
+
+    private static final String[] ALL_TECHS = {
+            "EJB", "JPA", "Hibernate", "CDI", "JSF", "JAX-RS",
+            "JAX-WS/SOAP", "Servlet", "Spring", "Struts"
+    };
+
+    @Test
+    void eap8_allTechnologies_produceHintsForEach() {
+        var hints = CompatibilityAdvisor.advise(resultWith(ALL_TECHS), new MigrationTarget("8.1", 0));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("CDI")));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("Faces")));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("JAX-RS")));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("JAX-WS")));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("Servlet")));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("Struts")));
+        assertTrue(hints.size() >= 10);
+    }
+
+    @Test
+    void eap7_allTechnologies_coverHibernateAndJsf() {
+        var hints = CompatibilityAdvisor.advise(resultWith(ALL_TECHS), new MigrationTarget("7.4", 0));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("Hibernate")));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("JSF")));
+    }
+
+    @Test
+    void java17_allTechnologies_coverSpringAndHibernate() {
+        var hints = CompatibilityAdvisor.advise(resultWith(ALL_TECHS), new MigrationTarget(null, 17));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("Spring")));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("Hibernate")));
+    }
+
+    @Test
+    void java21_allTechnologies_coverSpringAndHibernate() {
+        var hints = CompatibilityAdvisor.advise(resultWith(ALL_TECHS), new MigrationTarget(null, 21));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("Sequenced Collections")));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("Spring")));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("Hibernate")));
+    }
+
+    @Test
+    void java11to16_addsModuleHint() {
+        var hints = CompatibilityAdvisor.advise(resultWith(), new MigrationTarget(null, 11));
+        assertTrue(hints.stream().anyMatch(h -> h.contains("--add-modules") || h.contains("--add-opens")));
+    }
+
+    @Test
+    void combinedEapAndJavaTargets_mergeHints() {
+        var hints = CompatibilityAdvisor.advise(resultWith(ALL_TECHS), new MigrationTarget("8.1", 21));
+        assertTrue(hints.stream().anyMatch(h -> h.startsWith("[EAP")));
+        assertTrue(hints.stream().anyMatch(h -> h.startsWith("[Java")));
+    }
 }

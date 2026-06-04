@@ -71,6 +71,10 @@
         <!-- sonar -->
         <sonar.organization>darioajr</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <!-- presentation/bootstrap: excluded from coverage metric -->
+        <sonar.coverage.exclusions>**/RichConsole.java,**/Main.java,**/ScanProgressListener.java</sonar.coverage.exclusions>
+        <!-- repeated hint/template blocks: excluded from duplication metric -->
+        <sonar.cpd.exclusions>**/CompatibilityAdvisor.java,**/RichConsole.java,**/MtaCommandBuilder.java</sonar.cpd.exclusions>
     </properties>
 
     <dependencies>
