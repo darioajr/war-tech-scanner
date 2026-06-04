@@ -78,26 +78,34 @@ public final class MtaDiscovery {
     }
 
     private static Set<String> runContainerList(String engine, String image, String flag) {
-        try {
-            var proc = new ProcessBuilder(engine, "run", "--rm", image, "analyze", flag)
-                    .redirectErrorStream(true)
-                    .start();
-            proc.waitFor(60, TimeUnit.SECONDS);
-            return parseOutput(proc);
-        } catch (Exception e) {
-            return new LinkedHashSet<>();
-        }
+        return runProcess(new ProcessBuilder(engine, "run", "--rm", image, "analyze", flag), 60);
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private static Set<String> runList(String cliPath, String flag) {
+        return runProcess(new ProcessBuilder(cliPath, "analyze", flag), 30);
+    }
+
+    /**
+     * Runs the given process, waiting up to {@code timeoutSeconds}. Returns the parsed
+     * output, or an empty set on timeout, non-zero exit, or any I/O failure.
+     * Restores the interrupt flag if the wait is interrupted (Sonar java:S2142).
+     */
+    private static Set<String> runProcess(ProcessBuilder builder, int timeoutSeconds) {
+        builder.redirectErrorStream(true);
+        Process proc = null;
         try {
-            var proc = new ProcessBuilder(cliPath, "analyze", flag)
-                    .redirectErrorStream(true)
-                    .start();
-            proc.waitFor(30, TimeUnit.SECONDS);
+            proc = builder.start();
+            if (!proc.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
+                proc.destroyForcibly();
+                return new LinkedHashSet<>();
+            }
             return parseOutput(proc);
+        } catch (InterruptedException e) {
+            if (proc != null) proc.destroyForcibly();
+            Thread.currentThread().interrupt();
+            return new LinkedHashSet<>();
         } catch (Exception e) {
             return new LinkedHashSet<>();
         }
@@ -126,7 +134,8 @@ public final class MtaDiscovery {
      *   "- eap8"
      *   "eap8"
      */
-    private static String parseLine(String line) {
+    // package-private for unit testing
+    static String parseLine(String line) {
         String trimmed = line.strip();
         if (trimmed.isEmpty() || trimmed.startsWith("#")) return null;
         if (trimmed.startsWith("-") || trimmed.startsWith("*")) trimmed = trimmed.substring(1).stripLeading();
