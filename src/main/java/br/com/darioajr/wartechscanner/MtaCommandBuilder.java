@@ -144,8 +144,6 @@ public final class MtaCommandBuilder {
     private static String buildOpenShift(MtaInstallation inst, ScanResult result, MtaSuggestion s) {
         String appName  = Path.of(result.artifact).getFileName().toString()
                 .replaceAll("[^a-zA-Z0-9-]", "-").toLowerCase();
-        String targets  = String.join(",", s.resolvedTargets);
-        String sources  = String.join(",", s.resolvedSources);
         String ns       = inst.namespace      != null ? inst.namespace      : "mta";
         String route    = inst.hubRoute       != null ? inst.hubRoute       : "<hub-route>";
         String channel  = inst.operatorChannel != null ? inst.operatorChannel : "stable-v7";

@@ -18,8 +18,6 @@ package br.com.darioajr.wartechscanner;
 import org.fusesource.jansi.Ansi.Color;
 import org.fusesource.jansi.AnsiConsole;
 
-import java.util.List;
-
 import static org.fusesource.jansi.Ansi.ansi;
 
 /**
