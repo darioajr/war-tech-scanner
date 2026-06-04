@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -120,7 +121,13 @@ public final class ArchiveScanner {
             }
 
             for (var f : futures) {
-                try { f.get(); } catch (Exception e) {
+                try {
+                    f.get();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    result.warnings.add("Scan interrupted: " + e.getMessage());
+                    break;
+                } catch (ExecutionException e) {
                     result.warnings.add("Error in scan task: " + e.getMessage());
                 }
             }
