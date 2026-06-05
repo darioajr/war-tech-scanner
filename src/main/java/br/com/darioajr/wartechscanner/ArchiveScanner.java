@@ -86,8 +86,11 @@ public final class ArchiveScanner {
     }
 
     private void scanZip(Path file, String prefix, ScanResult result, Map<String, DetectedTechnology> techs, Limits lim) throws IOException {
+        // Platform threads (not virtual): the scan tasks write to synchronized
+        // shared collections, which would pin a virtual thread's carrier (S6906).
         try (var zip = new ZipFile(file.toFile());
-             var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+             var executor = Executors.newFixedThreadPool(
+                     Math.max(2, Runtime.getRuntime().availableProcessors()))) {
 
             var entries = Collections.list(zip.entries());
             int total = (int) entries.stream().filter(e -> !e.isDirectory()).count();
