@@ -5,7 +5,7 @@
 [![Coverage](https://codecov.io/gh/darioajr/war-tech-scanner/branch/main/graph/badge.svg)](https://codecov.io/gh/darioajr/war-tech-scanner)
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=darioajr_war-tech-scanner&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=darioajr_war-tech-scanner)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B50664%2Fgit%40github.com%3Adarioajr%2Fwar-tech-scanner.git.svg?type=shield&issueType=license)](https://app.fossa.com/projects/custom%2B50664%2Fgit%40github.com%3Adarioajr%2Fwar-tech-scanner.git?ref=badge_shield&issueType=license)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdarioajr%2Fwar-tech-scanner.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdarioajr%2Fwar-tech-scanner?ref=badge_shield&issueType=license)
 [![Java](https://img.shields.io/badge/java-21%2B-orange.svg)](https://adoptium.net)
 
 Java CLI to detect technologies in `.war`, `.ear`, `.jar`, and `.rar` files, focused on inventory for JBoss EAP / Jakarta EE migration.
@@ -332,3 +332,5 @@ Third-party dependencies and their licenses are listed in [THIRD-PARTY-NOTICES.t
 Dependency license compliance is monitored by [FOSSA](https://fossa.com):
 
 [![FOSSA Status](https://app.fossa.com/api/projects/custom%2B50664%2Fgit%40github.com%3Adarioajr%2Fwar-tech-scanner.git.svg?type=large&issueType=license)](https://app.fossa.com/projects/custom%2B50664%2Fgit%40github.com%3Adarioajr%2Fwar-tech-scanner.git?ref=badge_large&issueType=license)
+
+https://app.fossa.com/projects/git%2Bgithub.com%2Fdarioajr%2Fwar-tech-scanner?utm_source=share_link
