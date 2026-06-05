@@ -10,11 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [0.2.0] - 2026-06-05
 
 ### Fixed
+
 - Sonar issues
 
 ## [0.1.0] - 2026-06-05
 
 ### Added
+
 - Detection of Java EE / Jakarta EE technologies via bytecode (ASM), XML descriptors, and libraries
 - Support for `.war`, `.ear`, `.jar`, and `.rar` files, including nested archives
 - Rich terminal UI with spinner, progress bar, and bar chart (ANSI + Unicode)
