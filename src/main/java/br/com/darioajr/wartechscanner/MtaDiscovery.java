@@ -92,7 +92,8 @@ public final class MtaDiscovery {
      * output, or an empty set on timeout, non-zero exit, or any I/O failure.
      * Restores the interrupt flag if the wait is interrupted (Sonar java:S2142).
      */
-    private static Set<String> runProcess(ProcessBuilder builder, int timeoutSeconds) {
+    // package-private for unit testing
+    static Set<String> runProcess(ProcessBuilder builder, int timeoutSeconds) {
         builder.redirectErrorStream(true);
         Process proc = null;
         try {
@@ -117,8 +118,16 @@ public final class MtaDiscovery {
             String line;
             while ((line = reader.readLine()) != null) lines.add(line);
         }
-        // discard all output if the process failed (e.g. image not found, binary missing)
-        if (proc.exitValue() != 0) return new LinkedHashSet<>();
+        return parseLines(lines, proc.exitValue());
+    }
+
+    /**
+     * Filters raw CLI output lines into the set of valid MTA identifiers.
+     * Discards everything when {@code exitValue} is non-zero (process failed,
+     * e.g. image not found or binary missing). Package-private for unit testing.
+     */
+    static Set<String> parseLines(List<String> lines, int exitValue) {
+        if (exitValue != 0) return new LinkedHashSet<>();
         var result = new LinkedHashSet<String>();
         for (var line : lines) {
             String token = parseLine(line);

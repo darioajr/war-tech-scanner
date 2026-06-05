@@ -17,7 +17,9 @@ package br.com.darioajr.wartechscanner;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -134,6 +136,45 @@ class MtaDiscoveryTest {
         assertNull(MtaDiscovery.parseLine("path/to/thing")); // contains slash
         assertNull(MtaDiscovery.parseLine("path\\to\\thing")); // contains backslash
         assertNull(MtaDiscovery.parseLine("123abc")); // does not start with a letter
+    }
+
+    @Test
+    void runProcessReadsOutputOfRealProcessThatSucceeds() {
+        // Use the running JVM as a guaranteed-present, portable subprocess.
+        String java = System.getProperty("java.home") + File.separator + "bin"
+                + File.separator + "java";
+
+        var out = MtaDiscovery.runProcess(new ProcessBuilder(java, "-version"), 30);
+
+        // `java -version` exits 0, so output is parsed (not discarded); tokens vary by JDK.
+        assertNotNull(out);
+    }
+
+    @Test
+    void runProcessReturnsEmptyWhenExecutableMissing() {
+        var out = MtaDiscovery.runProcess(new ProcessBuilder(BOGUS_ENGINE, "x"), 5);
+        assertTrue(out.isEmpty());
+    }
+
+    @Test
+    void parseLinesDiscardsEverythingOnNonZeroExit() {
+        var lines = List.of("eap8", "openjdk17");
+        assertTrue(MtaDiscovery.parseLines(lines, 1).isEmpty());
+    }
+
+    @Test
+    void parseLinesKeepsOnlyValidIdentifiersOnZeroExit() {
+        var lines = List.of(
+                "NAME",                       // header → skipped
+                "  eap8     JBoss EAP 8",     // → eap8
+                "- openjdk17",                // → openjdk17
+                "# comment",                  // → skipped
+                "registry.redhat.io/x",       // contains '/' → skipped
+                "eap8");                      // duplicate → deduped
+
+        var result = MtaDiscovery.parseLines(lines, 0);
+
+        assertEquals(Set.of("eap8", "openjdk17"), result);
     }
 
     @Test

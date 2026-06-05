@@ -6,7 +6,7 @@
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=darioajr_war-tech-scanner&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=darioajr_war-tech-scanner)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdarioajr%2Fwar-tech-scanner.svg?type=shield&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdarioajr%2Fwar-tech-scanner?ref=badge_shield&issueType=license)[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdarioajr%2Fwar-tech-scanner.svg?type=shield&issueType=security)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdarioajr%2Fwar-tech-scanner?ref=badge_shield&issueType=security)
-[![Java](https://img.shields.io/badge/java-21%2B-orange.svg)](https://adoptium.net)
+[![Java](https://img.shields.io/badge/java-21%2B-green.svg)](https://adoptium.net)
 
 Java CLI to detect technologies in `.war`, `.ear`, `.jar`, and `.rar` files, focused on inventory for JBoss EAP / Jakarta EE migration.
 
