@@ -19,8 +19,10 @@ import java.util.SequencedSet;
 import java.util.LinkedHashSet;
 
 public final class DetectedTechnology {
-    public String name;
-    public int score;
+    // Package-private mutable state (S1104): consumers are same-package; JSON mapper
+    // is configured for FIELD visibility.
+    String name;
+    int score;
     public final SequencedSet<String> evidences = new LinkedHashSet<>();
 
     public DetectedTechnology() {}

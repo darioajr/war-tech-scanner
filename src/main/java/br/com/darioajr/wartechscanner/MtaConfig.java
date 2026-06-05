@@ -15,6 +15,8 @@
  */
 package br.com.darioajr.wartechscanner;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -24,9 +26,13 @@ import java.util.List;
 
 public final class MtaConfig {
 
-    public List<MtaInstallation> mtaInstallations = new ArrayList<>();
+    // Package-private (S1104): deserialized by the FIELD-visible mapper below.
+    List<MtaInstallation> mtaInstallations = new ArrayList<>();
 
     public static MtaConfig load(Path configFile) throws IOException {
-        return new ObjectMapper().readValue(configFile.toFile(), MtaConfig.class);
+        var mapper = new ObjectMapper();
+        // MtaConfig/MtaInstallation fields are package-private — bind by field, not setters.
+        mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+        return mapper.readValue(configFile.toFile(), MtaConfig.class);
     }
 }

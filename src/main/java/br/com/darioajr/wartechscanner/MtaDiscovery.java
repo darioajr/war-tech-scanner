@@ -16,6 +16,7 @@
 package br.com.darioajr.wartechscanner;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -104,7 +105,9 @@ public final class MtaDiscovery {
             }
             return parseOutput(proc);
         } catch (InterruptedException e) {
-            if (proc != null) proc.destroyForcibly();
+            // proc is always non-null here: InterruptedException can only come from
+            // waitFor(), which runs after start() succeeded.
+            proc.destroyForcibly();
             Thread.currentThread().interrupt();
             return new LinkedHashSet<>();
         } catch (Exception e) {
@@ -112,7 +115,7 @@ public final class MtaDiscovery {
         }
     }
 
-    private static Set<String> parseOutput(Process proc) throws Exception {
+    private static Set<String> parseOutput(Process proc) throws IOException {
         var lines = new java.util.ArrayList<String>();
         try (var reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
             String line;

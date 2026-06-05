@@ -13,7 +13,7 @@ Java CLI to detect technologies in `.war`, `.ear`, `.jar`, and `.rar` files, foc
 ## Detected technologies
 
 | Technology | Evidence sources |
-|---|---|
+| --- | --- |
 | EJB | `@Stateless`, `@Stateful`, `@MessageDriven`, `ejb-jar.xml`, `jboss-ejb3.xml` |
 | JPA | `@Entity`, `@PersistenceContext`, `persistence.xml` |
 | Hibernate | `SessionFactory`, `hibernate.cfg.xml`, `*.hbm.xml`, `hibernate-core-*.jar` |
@@ -46,14 +46,14 @@ The generated artifact is `target/war-tech-scanner-0.1.0-SNAPSHOT.jar` (fat JAR 
 
 ## Usage
 
-```
+```bash
 java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar <artifact> [options]
 ```
 
 ### Parameters
 
 | Parameter | Type | Description |
-|---|---|---|
+| --- | --- | --- |
 | `<artifact>` | positional | `.war`, `.ear`, `.jar`, or `.rar` file to analyze |
 | `--json` | flag | Prints result as JSON (disables rich UI) |
 | `--no-nested` | flag | Does not analyze nested archives (JARs inside WARs, etc.) |
@@ -67,16 +67,19 @@ java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar <artifact> [options]
 ### Examples
 
 **Basic scan with rich UI:**
+
 ```bash
 java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar my-app.war
 ```
 
 **JSON output:**
+
 ```bash
 java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar my-app.war --json > report.json
 ```
 
 **Migration analysis for EAP 8.1 + Java 21:**
+
 ```bash
 java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar my-app.ear \
   --target-eap=8.1 \
@@ -84,6 +87,7 @@ java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar my-app.ear \
 ```
 
 **Generate MTA command suggestion:**
+
 ```bash
 java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar my-app.ear \
   --target-eap=8.1 \
@@ -93,11 +97,13 @@ java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar my-app.ear \
 ```
 
 **Without analyzing nested JARs:**
+
 ```bash
 java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar my-app.war --no-nested
 ```
 
 **Bulk inventory:**
+
 ```bash
 find /apps -type f \( -name "*.war" -o -name "*.ear" \) \
   -exec java -jar target/war-tech-scanner-0.1.0-SNAPSHOT.jar {} \
@@ -162,10 +168,11 @@ When `--mta-config` is provided, the scanner runs each configured MTA installati
 Runs the locally installed `mta-cli` binary.
 
 | Field | Required | Description |
-|---|---|---|
+| --- | --- | --- |
 | `path` | yes | Absolute path to the `mta-cli` binary |
 
 Generated command:
+
 ```bash
 /opt/mta-7.2/bin/mta-cli analyze \
   --input my-app.ear \
@@ -179,13 +186,14 @@ Generated command:
 Runs via Docker or Podman using official Red Hat images from `registry.redhat.io`.
 
 | Field | Required | Default | Description |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `image` | yes | — | MTA CLI image. Use `registry.redhat.io/mta/mta-cli-rhel9:<version>` (MTA 7.x) or `registry.redhat.io/mta/mta-cli-rhel8:<version>` (MTA 6.x) |
 | `containerEngine` | no | `docker` | Container engine: `docker` or `podman` |
 
 > **Note:** `registry.redhat.io` requires authentication with a Red Hat account (<https://access.redhat.com>).
 
 Generated command:
+
 ```bash
 docker login registry.redhat.io
 docker run --rm \
@@ -203,13 +211,14 @@ docker run --rm \
 Installs the MTA operator via OLM from the `redhat-operators` catalog and creates the analysis through the MTA Hub API.
 
 | Field | Required | Default | Description |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `namespace` | no | `mta` | Namespace where the operator is installed |
 | `hubRoute` | yes | — | Base URL of the MTA Hub exposed by the operator |
 | `operatorChannel` | no | `stable-v7` | OLM channel: `stable-v7` (MTA 7.x) or `stable-v6` (MTA 6.x) |
 | `operatorCatalog` | no | `redhat-operators` | OLM CatalogSource |
 
 Generated command (two steps):
+
 ```bash
 # Step 1 — install the MTA operator via OLM
 oc apply -f - <<'EOF'
@@ -259,7 +268,7 @@ curl -s -X POST "$MTA_HUB/hub/analyses" \
 
 When the binary (BARE_METAL) or the image (CONTAINER) is available locally, the scanner runs:
 
-```
+```bash
 mta-cli analyze --list-sources
 mta-cli analyze --list-targets
 mta-cli analyze --list-providers

@@ -37,6 +37,7 @@ import java.util.concurrent.Callable;
         version = "war-tech-scanner 0.1.0",
         description = "Detects EJB, JPA, Hibernate and Java EE/Jakarta EE technologies in WAR/EAR/JAR."
 )
+@SuppressWarnings("java:S106") // CLI tool: stdout/stderr are the intended output channels (must be pipeable)
 public class Main implements Callable<Integer> {
 
     @Parameters(index = "0", description = ".war, .ear, .jar or .rar file to analyze")

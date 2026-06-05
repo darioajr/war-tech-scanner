@@ -25,10 +25,11 @@ public interface ScanProgressListener {
 
     void onScanComplete();
 
+    /** Silent listener used when no progress reporting is desired (e.g. tests, JSON mode). */
     ScanProgressListener NOOP = new ScanProgressListener() {
-        public void onScanStart(String a, int t)          {}
-        public void onProgress(String e, int p, int t)   {}
-        public void onNestedArchive(String n)             {}
-        public void onScanComplete()                      {}
+        public void onScanStart(String a, int t)        { /* no-op: progress not reported */ }
+        public void onProgress(String e, int p, int t)  { /* no-op: progress not reported */ }
+        public void onNestedArchive(String n)           { /* no-op: progress not reported */ }
+        public void onScanComplete()                    { /* no-op: progress not reported */ }
     };
 }

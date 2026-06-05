@@ -207,6 +207,72 @@ class MtaCommandBuilderTest {
         assertEquals(MtaInstallationType.OPENSHIFT,   suggestions.get(2).installationType);
     }
 
+    // ── Capability-driven resolution (hasCaps == true paths) ────────────────────
+
+    private static MtaDiscovery.Capabilities caps(java.util.Set<String> sources,
+                                                  java.util.Set<String> targets,
+                                                  java.util.Set<String> providers) {
+        return new MtaDiscovery.Capabilities(sources, targets, providers, null);
+    }
+
+    @Test
+    void resolveSources_keepsOnlyCapabilityConfirmedSources() {
+        var c = caps(java.util.Set.of("java-ee"), java.util.Set.of(), java.util.Set.of());
+        var sources = MtaCommandBuilder.resolveSources(List.of("EJB", "JPA"), c, true);
+        assertEquals(List.of("java-ee"), sources);
+    }
+
+    @Test
+    void resolveSources_withoutCapabilities_returnsEmpty() {
+        var c = caps(java.util.Set.of("java-ee"), java.util.Set.of(), java.util.Set.of());
+        assertTrue(MtaCommandBuilder.resolveSources(List.of("EJB"), c, false).isEmpty());
+    }
+
+    @Test
+    void resolveEapTarget_prefersExactThenMajorThenHighest() {
+        var exact = caps(java.util.Set.of(), java.util.Set.of("eap81", "eap8"), java.util.Set.of());
+        assertEquals("eap81", MtaCommandBuilder.resolveEapTarget("8.1", exact, true));
+
+        var majorOnly = caps(java.util.Set.of(), java.util.Set.of("eap8"), java.util.Set.of());
+        assertEquals("eap8", MtaCommandBuilder.resolveEapTarget("8.1", majorOnly, true));
+
+        var higherOnly = caps(java.util.Set.of(), java.util.Set.of("eap9"), java.util.Set.of());
+        assertEquals("eap9", MtaCommandBuilder.resolveEapTarget("8.1", higherOnly, true));
+    }
+
+    @Test
+    void resolveJavaTarget_prefersOpenjdkThenJavaThenHighest() {
+        var openjdk = caps(java.util.Set.of(), java.util.Set.of("openjdk21"), java.util.Set.of());
+        assertEquals("openjdk21", MtaCommandBuilder.resolveJavaTarget(21, openjdk, true));
+
+        var legacy = caps(java.util.Set.of(), java.util.Set.of("java21"), java.util.Set.of());
+        assertEquals("java21", MtaCommandBuilder.resolveJavaTarget(21, legacy, true));
+
+        var higher = caps(java.util.Set.of(), java.util.Set.of("openjdk17"), java.util.Set.of());
+        assertEquals("openjdk17", MtaCommandBuilder.resolveJavaTarget(21, higher, true));
+
+        var none = caps(java.util.Set.of(), java.util.Set.of("eap8"), java.util.Set.of());
+        assertNull(MtaCommandBuilder.resolveJavaTarget(21, none, true));
+    }
+
+    @Test
+    void resolveTargets_withCapabilities_filtersByAvailableTargets() {
+        var c = caps(java.util.Set.of(), java.util.Set.of("eap8", "quarkus"), java.util.Set.of());
+        var targets = MtaCommandBuilder.resolveTargets(
+                List.of("EJB", "JPA"), new MigrationTarget(null, 0), c, true);
+        // no explicit migration target → falls back to per-tech candidates filtered by caps
+        assertTrue(targets.contains("eap8"));
+    }
+
+    @Test
+    void resolveTargets_usesExplicitEapAndJavaTargets() {
+        var c = caps(java.util.Set.of(), java.util.Set.of("eap81", "openjdk21"), java.util.Set.of());
+        var targets = MtaCommandBuilder.resolveTargets(
+                List.of("EJB"), new MigrationTarget("8.1", 21), c, true);
+        assertTrue(targets.contains("eap81"));
+        assertTrue(targets.contains("openjdk21"));
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private static MtaConfig configWith(MtaInstallation... installations) {

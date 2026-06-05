@@ -18,11 +18,11 @@ package br.com.darioajr.wartechscanner;
 import java.util.List;
 
 public final class MtaSuggestion {
-    public String mtaLabel;
-    public String mtaPath;
-    public MtaInstallationType installationType;
-    public String command;
-    public List<String> resolvedSources;
-    public List<String> resolvedTargets;
-    public String note;
+    String mtaLabel;
+    String mtaPath;
+    MtaInstallationType installationType;
+    String command;
+    List<String> resolvedSources;
+    List<String> resolvedTargets;
+    String note;
 }

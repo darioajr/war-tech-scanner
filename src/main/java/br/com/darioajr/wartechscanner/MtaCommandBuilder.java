@@ -20,6 +20,9 @@ import java.util.*;
 
 public final class MtaCommandBuilder {
 
+    private static final String JAVA_EE = "java-ee";
+    private static final String QUARKUS = "quarkus";
+
     private static final Map<String, List<String>> TECH_TO_TARGETS = new LinkedHashMap<>();
 
     /**
@@ -36,26 +39,26 @@ public final class MtaCommandBuilder {
     static {
         // Each tech maps to candidate MTA source platform identifiers, in priority order.
         // All Java EE / Jakarta EE technologies share the "java-ee" source.
-        TECH_TO_CANDIDATE_SOURCES.put("EJB",         List.of("java-ee", "eap7", "eap6"));
-        TECH_TO_CANDIDATE_SOURCES.put("JPA",         List.of("java-ee", "eap7", "eap6"));
-        TECH_TO_CANDIDATE_SOURCES.put("Hibernate",   List.of("java-ee", "eap7", "eap6"));
-        TECH_TO_CANDIDATE_SOURCES.put("CDI",         List.of("java-ee", "eap7", "eap6"));
-        TECH_TO_CANDIDATE_SOURCES.put("JSF",         List.of("java-ee", "eap7", "eap6"));
-        TECH_TO_CANDIDATE_SOURCES.put("JAX-RS",      List.of("java-ee", "eap7", "eap6"));
-        TECH_TO_CANDIDATE_SOURCES.put("JAX-WS/SOAP", List.of("java-ee", "eap7", "eap6"));
-        TECH_TO_CANDIDATE_SOURCES.put("Servlet",     List.of("java-ee", "eap7", "eap6"));
+        TECH_TO_CANDIDATE_SOURCES.put("EJB",         List.of(JAVA_EE, "eap7", "eap6"));
+        TECH_TO_CANDIDATE_SOURCES.put("JPA",         List.of(JAVA_EE, "eap7", "eap6"));
+        TECH_TO_CANDIDATE_SOURCES.put("Hibernate",   List.of(JAVA_EE, "eap7", "eap6"));
+        TECH_TO_CANDIDATE_SOURCES.put("CDI",         List.of(JAVA_EE, "eap7", "eap6"));
+        TECH_TO_CANDIDATE_SOURCES.put("JSF",         List.of(JAVA_EE, "eap7", "eap6"));
+        TECH_TO_CANDIDATE_SOURCES.put("JAX-RS",      List.of(JAVA_EE, "eap7", "eap6"));
+        TECH_TO_CANDIDATE_SOURCES.put("JAX-WS/SOAP", List.of(JAVA_EE, "eap7", "eap6"));
+        TECH_TO_CANDIDATE_SOURCES.put("Servlet",     List.of(JAVA_EE, "eap7", "eap6"));
         TECH_TO_CANDIDATE_SOURCES.put("Spring",      List.of("spring", "spring-boot"));
-        TECH_TO_CANDIDATE_SOURCES.put("Struts",      List.of("java-ee"));
+        TECH_TO_CANDIDATE_SOURCES.put("Struts",      List.of(JAVA_EE));
 
         TECH_TO_TARGETS.put("EJB",         List.of("eap8", "eap7", "eap"));
-        TECH_TO_TARGETS.put("JPA",         List.of("eap8", "eap7", "eap", "quarkus"));
-        TECH_TO_TARGETS.put("Hibernate",   List.of("eap8", "eap7", "eap", "quarkus"));
-        TECH_TO_TARGETS.put("CDI",         List.of("eap8", "eap7", "eap", "quarkus"));
+        TECH_TO_TARGETS.put("JPA",         List.of("eap8", "eap7", "eap", QUARKUS));
+        TECH_TO_TARGETS.put("Hibernate",   List.of("eap8", "eap7", "eap", QUARKUS));
+        TECH_TO_TARGETS.put("CDI",         List.of("eap8", "eap7", "eap", QUARKUS));
         TECH_TO_TARGETS.put("JSF",         List.of("eap8", "eap7", "eap"));
-        TECH_TO_TARGETS.put("JAX-RS",      List.of("eap8", "eap7", "eap", "quarkus"));
+        TECH_TO_TARGETS.put("JAX-RS",      List.of("eap8", "eap7", "eap", QUARKUS));
         TECH_TO_TARGETS.put("JAX-WS/SOAP", List.of("eap8", "eap7", "eap"));
         TECH_TO_TARGETS.put("Servlet",     List.of("eap8", "eap7", "eap", "cloud-readiness"));
-        TECH_TO_TARGETS.put("Spring",      List.of("eap8", "eap7", "eap", "quarkus", "cloud-readiness"));
+        TECH_TO_TARGETS.put("Spring",      List.of("eap8", "eap7", "eap", QUARKUS, "cloud-readiness"));
         TECH_TO_TARGETS.put("Struts",      List.of("eap8", "eap7", "eap"));
     }
 
@@ -207,7 +210,8 @@ public final class MtaCommandBuilder {
 
     // ── Resolution helpers ────────────────────────────────────────────────────
 
-    private static List<String> resolveSources(List<String> detected,
+    // package-private for unit testing
+    static List<String> resolveSources(List<String> detected,
                                                 MtaDiscovery.Capabilities caps, boolean hasCaps) {
         // Without confirmed discovery we cannot know which source names this MTA version
         // accepts — omitting --source is safer than generating "unknown source" errors.
@@ -223,7 +227,8 @@ public final class MtaCommandBuilder {
         return new ArrayList<>(result);
     }
 
-    private static List<String> resolveTargets(List<String> detected,
+    // package-private for unit testing
+    static List<String> resolveTargets(List<String> detected,
                                                 MigrationTarget migTarget,
                                                 MtaDiscovery.Capabilities caps, boolean hasCaps) {
         var result = new LinkedHashSet<String>();
@@ -254,7 +259,8 @@ public final class MtaCommandBuilder {
      * Priority: exact (eap81) → major (eap8) → highest available eap* target.
      * When no capabilities are known, uses major version only (eap8, not eap81).
      */
-    private static String resolveEapTarget(String eapVersion, MtaDiscovery.Capabilities caps, boolean hasCaps) {
+    // package-private for unit testing
+    static String resolveEapTarget(String eapVersion, MtaDiscovery.Capabilities caps, boolean hasCaps) {
         String exact = "eap" + eapVersion.replace(".", "");
         String major = "eap" + eapVersion.replaceAll("\\..*", "");
 
@@ -276,7 +282,8 @@ public final class MtaCommandBuilder {
      * Priority: openjdk<N> → java<N> → highest available openjdk* → omit if none.
      * Without capabilities, defaults to "openjdk<N>".
      */
-    private static String resolveJavaTarget(int javaVersion, MtaDiscovery.Capabilities caps, boolean hasCaps) {
+    // package-private for unit testing
+    static String resolveJavaTarget(int javaVersion, MtaDiscovery.Capabilities caps, boolean hasCaps) {
         String openjdk = "openjdk" + javaVersion;
         String java    = "java"    + javaVersion;
         if (!hasCaps) return openjdk;

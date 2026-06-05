@@ -29,12 +29,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public final class ArchiveScanner {
@@ -105,34 +107,45 @@ public final class ArchiveScanner {
                 var name = prefix + entry.getName();
                 inspectEntryName(name, result, techs);
                 listener.onProgress(name, processed.incrementAndGet(), total);
-
-                if (name.endsWith(".class")) {
-                    var bytes = readBounded(zip.getInputStream(entry), lim);
-                    futures.add(executor.submit(() -> inspectClass(name, bytes, result, techs)));
-                } else if (scanNestedArchives && isArchive(name)) {
-                    result.libraries.add(name);
-                    listener.onNestedArchive(name);
-                    var bytes = readBounded(zip.getInputStream(entry), lim);
-                    futures.add(executor.submit(() -> {
-                        try {
-                            scanNestedArchive(bytes, name + "!", result, techs, lim);
-                        } catch (Exception e) {
-                            result.warnings.add("Error processing nested archive " + name + ": " + e.getMessage());
-                        }
-                    }));
-                }
+                submitEntry(zip, entry, name, result, techs, lim, executor, futures);
             }
 
-            for (var f : futures) {
+            awaitAll(futures, result);
+        }
+    }
+
+    /** Submits the inspection task for a single non-directory entry. */
+    private void submitEntry(ZipFile zip, ZipEntry entry, String name,
+                             ScanResult result, Map<String, DetectedTechnology> techs, Limits lim,
+                             ExecutorService executor, List<Future<?>> futures) throws IOException {
+        if (name.endsWith(".class")) {
+            var bytes = readBounded(zip.getInputStream(entry), lim);
+            futures.add(executor.submit(() -> inspectClass(name, bytes, result, techs)));
+        } else if (scanNestedArchives && isArchive(name)) {
+            result.libraries.add(name);
+            listener.onNestedArchive(name);
+            var bytes = readBounded(zip.getInputStream(entry), lim);
+            futures.add(executor.submit(() -> {
                 try {
-                    f.get();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    result.warnings.add("Scan interrupted: " + e.getMessage());
-                    break;
-                } catch (ExecutionException e) {
-                    result.warnings.add("Error in scan task: " + e.getMessage());
+                    scanNestedArchive(bytes, name + "!", result, techs, lim);
+                } catch (Exception e) {
+                    result.warnings.add("Error processing nested archive " + name + ": " + e.getMessage());
                 }
+            }));
+        }
+    }
+
+    /** Waits for every submitted task, recording warnings for failures. */
+    private static void awaitAll(List<Future<?>> futures, ScanResult result) {
+        for (var f : futures) {
+            try {
+                f.get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                result.warnings.add("Scan interrupted: " + e.getMessage());
+                break;
+            } catch (ExecutionException e) {
+                result.warnings.add("Error in scan task: " + e.getMessage());
             }
         }
     }

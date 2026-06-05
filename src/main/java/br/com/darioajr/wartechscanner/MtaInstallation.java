@@ -18,41 +18,41 @@ package br.com.darioajr.wartechscanner;
 public final class MtaInstallation {
 
     /** Human-readable label shown in the output. */
-    public String label;
+    String label;
 
     /** Installation type. Drives how the command is built and how discovery is performed. */
-    public MtaInstallationType type = MtaInstallationType.BARE_METAL;
+    MtaInstallationType type = MtaInstallationType.BARE_METAL;
 
     // ── BARE_METAL ────────────────────────────────────────────────────────────
     /** Absolute path to the mta-cli binary. Required for BARE_METAL. */
-    public String path;
+    String path;
 
     // ── CONTAINER ─────────────────────────────────────────────────────────────
     /** Container image (e.g. quay.io/konveyor/mta-cli:7.2). Required for CONTAINER. */
-    public String image;
+    String image;
 
     /** Container engine to use. Default: docker. Accepts: docker, podman. */
-    public String containerEngine = "docker";
+    String containerEngine = "docker";
 
     // ── OPENSHIFT ─────────────────────────────────────────────────────────────
     /** OpenShift namespace where the MTA operator is installed. Default: mta. */
-    public String namespace = "mta";
+    String namespace = "mta";
 
     /**
      * Base URL of the MTA Hub route exposed by the operator
      * (e.g. https://mta-mta.apps.cluster.example.com).
      */
-    public String hubRoute;
+    String hubRoute;
 
     /**
      * OLM subscription channel for the MTA operator.
      * MTA 7.x → stable-v7   MTA 6.x → stable-v6   (default: stable-v7)
      */
-    public String operatorChannel = "stable-v7";
+    String operatorChannel = "stable-v7";
 
     /**
      * OLM CatalogSource that provides the MTA operator.
      * Red Hat official: redhat-operators  (default)
      */
-    public String operatorCatalog = "redhat-operators";
+    String operatorCatalog = "redhat-operators";
 }

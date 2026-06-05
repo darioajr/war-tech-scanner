@@ -18,6 +18,8 @@ package br.com.darioajr.wartechscanner;
 import org.fusesource.jansi.Ansi.Color;
 import org.fusesource.jansi.AnsiConsole;
 
+import java.util.List;
+
 import static org.fusesource.jansi.Ansi.ansi;
 
 /**
@@ -27,7 +29,12 @@ import static org.fusesource.jansi.Ansi.ansi;
  *   RICH    – ANSI colors + Unicode box/bar/spinner chars (Mac, Linux, Windows Terminal)
  *   BASIC   – ANSI colors + ASCII-safe chars (cmd.exe / PowerShell without Unicode font)
  *   PLAIN   – no ANSI, no Unicode (piped output, CI)
+ *
+ * This is the CLI's presentation layer: writing to {@code System.out} is its
+ * purpose (the result must be pipeable, e.g. {@code --json > file}), so java:S106
+ * is suppressed deliberately rather than routed through a logger.
  */
+@SuppressWarnings("java:S106") // System.out is the intended output channel of this CLI renderer
 public final class RichConsole implements ScanProgressListener {
 
     // ── rendering mode ────────────────────────────────────────────────────────
@@ -35,7 +42,7 @@ public final class RichConsole implements ScanProgressListener {
 
     // ── character sets ────────────────────────────────────────────────────────
     private record Chars(
-            String[] spinner,
+            List<String> spinner,
             String barFilled, String barEmpty,
             String boxH,  String boxV,
             String boxTL, String boxTR, String boxBL, String boxBR,
@@ -44,7 +51,7 @@ public final class RichConsole implements ScanProgressListener {
     ) {
         static Chars unicode() {
             return new Chars(
-                    new String[]{"⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"},
+                    List.of("⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"),
                     "█", "░",
                     "═", "║", "╔", "╗", "╚", "╝", "╠", "╣",
                     "·", "↳", "…", "⚠", "»"
@@ -53,7 +60,7 @@ public final class RichConsole implements ScanProgressListener {
 
         static Chars ascii() {
             return new Chars(
-                    new String[]{"|", "/", "-", "\\"},
+                    List.of("|", "/", "-", "\\"),
                     "#", ".",
                     "-", "|", "+", "+", "+", "+", "+", "+",
                     "*", ">", "...", "!", ">>"
@@ -144,7 +151,11 @@ public final class RichConsole implements ScanProgressListener {
     public void onScanComplete() {
         this.running = false;
         if (spinnerThread != null) {
-            try { spinnerThread.join(600); } catch (InterruptedException ignored) {}
+            try {
+                spinnerThread.join(600);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
         if (mode != Mode.PLAIN) clearLine();
     }
@@ -153,7 +164,7 @@ public final class RichConsole implements ScanProgressListener {
 
     public void printSummary(ScanResult result, int maxEvidence, MigrationTarget target) {
         if (mode == Mode.PLAIN) {
-            plainSummary(result, maxEvidence, target);
+            plainSummary(result, maxEvidence);
             return;
         }
 
@@ -162,12 +173,7 @@ public final class RichConsole implements ScanProgressListener {
         printBoxTop(boxWidth);
         printBoxTitle("WAR TECH SCANNER  -  RESULT", boxWidth, Color.CYAN);
         printBoxSep(boxWidth);
-        printBoxLine("  File     :  " + result.artifact, boxWidth);
-        printBoxLine("  Type     :  " + result.artifactType, boxWidth);
-        printBoxLine("  Scan     :  " + result.scannedAt, boxWidth);
-        printBoxLine("  Classes  :  " + result.classesWithEvidence.size()
-                + "   Descriptors: " + result.descriptors.size()
-                + "   Libs: " + result.libraries.size(), boxWidth);
+        printSummaryHeader(result, boxWidth);
 
         if (result.technologies.isEmpty()) {
             printBoxSep(boxWidth);
@@ -177,102 +183,131 @@ public final class RichConsole implements ScanProgressListener {
             return;
         }
 
-        // ── bar chart ────────────────────────────────────────────────────────
+        printBarChart(result, maxEvidence, boxWidth);
+        printWarnings(result, boxWidth);
+        printMigration(result, target, boxWidth);
+        printMtaSuggestions(result, boxWidth);
+
+        printBoxBottom(boxWidth);
+        cleanup();
+    }
+
+    private void printSummaryHeader(ScanResult result, int boxWidth) {
+        printBoxLine("  File     :  " + result.artifact, boxWidth);
+        printBoxLine("  Type     :  " + result.artifactType, boxWidth);
+        printBoxLine("  Scan     :  " + result.scannedAt, boxWidth);
+        printBoxLine("  Classes  :  " + result.classesWithEvidence.size()
+                + "   Descriptors: " + result.descriptors.size()
+                + "   Libs: " + result.libraries.size(), boxWidth);
+    }
+
+    private void printBarChart(ScanResult result, int maxEvidence, int boxWidth) {
         printBoxSep(boxWidth);
         printBoxTitle("DETECTED TECHNOLOGIES", boxWidth, Color.WHITE);
         printBoxSep(boxWidth);
 
         int maxScore   = result.technologies.stream().mapToInt(t -> t.score).max().orElse(1);
         int chartWidth = boxWidth - 26;
-
         for (var tech : result.technologies) {
-            int filled   = Math.max(1, tech.score * chartWidth / Math.max(maxScore, 1));
-            int empty    = chartWidth - filled;
-            Color color  = scoreColor(tech.score, maxScore);
+            printTechRow(tech, maxEvidence, maxScore, chartWidth, boxWidth);
+        }
+    }
 
-            String bar   = ansi().fg(color).a(ch.barFilled().repeat(filled)).reset()
-                               .fgBrightBlack().a(ch.barEmpty().repeat(empty)).reset().toString();
-            String score = ansi().fg(color).bold().a("%4d pts".formatted(tech.score)).reset().toString();
-            String label = "%-12s".formatted(tech.name);
-            printBoxLine("  " + ansi().bold().a(label).reset() + " " + bar + " " + score, boxWidth);
+    private void printTechRow(DetectedTechnology tech, int maxEvidence,
+                              int maxScore, int chartWidth, int boxWidth) {
+        int filled  = Math.max(1, tech.score * chartWidth / Math.max(maxScore, 1));
+        int empty   = chartWidth - filled;
+        Color color = scoreColor(tech.score, maxScore);
 
-            int shown = 0;
-            for (var ev : tech.evidences) {
-                if (shown++ >= maxEvidence) {
-                    int remaining = tech.evidences.size() - maxEvidence;
-                    printBoxLine(ansi().fgBrightBlack()
-                            .a("    " + ch.more() + " +" + remaining + " more").reset().toString(), boxWidth);
-                    break;
-                }
+        String bar   = ansi().fg(color).a(ch.barFilled().repeat(filled)).reset()
+                           .fgBrightBlack().a(ch.barEmpty().repeat(empty)).reset().toString();
+        String score = ansi().fg(color).bold().a("%4d pts".formatted(tech.score)).reset().toString();
+        String label = "%-12s".formatted(tech.name);
+        printBoxLine("  " + ansi().bold().a(label).reset() + " " + bar + " " + score, boxWidth);
+
+        int shown = 0;
+        for (var ev : tech.evidences) {
+            if (shown++ >= maxEvidence) {
+                int remaining = tech.evidences.size() - maxEvidence;
                 printBoxLine(ansi().fgBrightBlack()
-                        .a("    " + ch.bullet() + " " + truncate(ev, boxWidth - 12)).reset().toString(), boxWidth);
+                        .a("    " + ch.more() + " +" + remaining + " more").reset().toString(), boxWidth);
+                break;
             }
+            printBoxLine(ansi().fgBrightBlack()
+                    .a("    " + ch.bullet() + " " + truncate(ev, boxWidth - 12)).reset().toString(), boxWidth);
         }
+    }
 
-        // ── warnings ─────────────────────────────────────────────────────────
-        if (!result.warnings.isEmpty()) {
-            printBoxSep(boxWidth);
-            printBoxTitle("WARNINGS", boxWidth, Color.YELLOW);
-            printBoxSep(boxWidth);
-            for (var w : result.warnings) {
-                printBoxLine(ansi().fgYellow().a("  " + ch.warn() + "  ").reset()
-                        .a(truncate(w, boxWidth - 8)).toString(), boxWidth);
-            }
+    private void printWarnings(ScanResult result, int boxWidth) {
+        if (result.warnings.isEmpty()) return;
+        printBoxSep(boxWidth);
+        printBoxTitle("WARNINGS", boxWidth, Color.YELLOW);
+        printBoxSep(boxWidth);
+        for (var w : result.warnings) {
+            printBoxLine(ansi().fgYellow().a("  " + ch.warn() + "  ").reset()
+                    .a(truncate(w, boxWidth - 8)).toString(), boxWidth);
         }
+    }
 
-        // ── migration hints ──────────────────────────────────────────────────
-        if (!result.migrationHints.isEmpty()) {
-            String title = "MIGRATION";
-            if (target.hasEapVersion()) title += " -> EAP " + target.eapVersion();
-            if (target.hasJavaVersion()) title += " / Java " + target.javaVersion();
-            printBoxSep(boxWidth);
-            printBoxTitle(title, boxWidth, Color.MAGENTA);
-            printBoxSep(boxWidth);
-            for (var hint : result.migrationHints) {
-                printBoxLine(ansi().fgMagenta().a("  " + ch.hint() + "  ").reset()
-                        .a(truncate(hint, boxWidth - 8)).toString(), boxWidth);
-            }
+    private void printMigration(ScanResult result, MigrationTarget target, int boxWidth) {
+        if (result.migrationHints.isEmpty()) return;
+        String title = "MIGRATION";
+        if (target.hasEapVersion()) title += " -> EAP " + target.eapVersion();
+        if (target.hasJavaVersion()) title += " / Java " + target.javaVersion();
+        printBoxSep(boxWidth);
+        printBoxTitle(title, boxWidth, Color.MAGENTA);
+        printBoxSep(boxWidth);
+        for (var hint : result.migrationHints) {
+            printBoxLine(ansi().fgMagenta().a("  " + ch.hint() + "  ").reset()
+                    .a(truncate(hint, boxWidth - 8)).toString(), boxWidth);
         }
+    }
 
-        // ── MTA command suggestions (one block per installation) ─────────────
-        if (result.mtaSuggestions != null && !result.mtaSuggestions.isEmpty()) {
-            for (var s : result.mtaSuggestions) {
-                printBoxSep(boxWidth);
-                String typeTag = s.installationType != null ? " [" + s.installationType + "]" : "";
-                printBoxTitle("MTA: " + s.mtaLabel + typeTag, boxWidth, Color.GREEN);
-                printBoxSep(boxWidth);
-                if (s.note != null) {
-                    printBoxLine(ansi().fgYellow().a("  " + ch.warn() + "  ").reset()
-                            .a(truncate(s.note, boxWidth - 8)).toString(), boxWidth);
-                }
-                if (!s.resolvedTargets.isEmpty()) {
-                    printBoxLine(ansi().fgBrightBlack().a("  targets : ").reset()
-                            .a(String.join(", ", s.resolvedTargets)).toString(), boxWidth);
-                }
-                if (!s.resolvedSources.isEmpty()) {
-                    printBoxLine(ansi().fgBrightBlack().a("  sources : ").reset()
-                            .a(String.join(", ", s.resolvedSources)).toString(), boxWidth);
-                }
-                // OPENSHIFT uses multiline YAML — print each line separately
-                for (String cmdLine : s.command.split("\n")) {
-                    printBoxLine(ansi().fgGreen().a("  " + ch.hint() + "  ").reset()
-                            .a(truncate(cmdLine, boxWidth - 8)).toString(), boxWidth);
-                }
-            }
+    private void printMtaSuggestions(ScanResult result, int boxWidth) {
+        if (result.mtaSuggestions == null || result.mtaSuggestions.isEmpty()) return;
+        for (var s : result.mtaSuggestions) {
+            printMtaBlock(s, boxWidth);
         }
+    }
 
-        printBoxBottom(boxWidth);
-        cleanup();
+    private void printMtaBlock(MtaSuggestion s, int boxWidth) {
+        printBoxSep(boxWidth);
+        String typeTag = s.installationType != null ? " [" + s.installationType + "]" : "";
+        printBoxTitle("MTA: " + s.mtaLabel + typeTag, boxWidth, Color.GREEN);
+        printBoxSep(boxWidth);
+        if (s.note != null) {
+            printBoxLine(ansi().fgYellow().a("  " + ch.warn() + "  ").reset()
+                    .a(truncate(s.note, boxWidth - 8)).toString(), boxWidth);
+        }
+        if (!s.resolvedTargets.isEmpty()) {
+            printBoxLine(ansi().fgBrightBlack().a("  targets : ").reset()
+                    .a(String.join(", ", s.resolvedTargets)).toString(), boxWidth);
+        }
+        if (!s.resolvedSources.isEmpty()) {
+            printBoxLine(ansi().fgBrightBlack().a("  sources : ").reset()
+                    .a(String.join(", ", s.resolvedSources)).toString(), boxWidth);
+        }
+        // OPENSHIFT uses multiline YAML — print each line separately
+        for (String cmdLine : s.command.split("\n")) {
+            printBoxLine(ansi().fgGreen().a("  " + ch.hint() + "  ").reset()
+                    .a(truncate(cmdLine, boxWidth - 8)).toString(), boxWidth);
+        }
     }
 
     // ── Spinner render loop ───────────────────────────────────────────────────
 
     private void renderLoop() {
+        var spinner = ch.spinner();
         int frame = 0;
         while (running) {
-            renderProgressLine(ch.spinner()[frame % ch.spinner().length]);
+            renderProgressLine(spinner.get(frame % spinner.size()));
             frame++;
-            try { Thread.sleep(80); } catch (InterruptedException e) { break; }
+            try {
+                Thread.sleep(80);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
         clearLine();
     }
@@ -369,7 +404,7 @@ public final class RichConsole implements ScanProgressListener {
 
     /** Strips ANSI escape sequences to compute printable character count. */
     private static int visibleLength(String s) {
-        return s.replaceAll("\\[[;\\d]*m", "").length();
+        return s.replaceAll("\u001B\\[[;\\d]*m", "").length();
     }
 
     private static String shortName(String path) {
@@ -402,8 +437,7 @@ public final class RichConsole implements ScanProgressListener {
         String noColor = System.getenv("NO_COLOR");
         if (noColor != null) return false;
         String term = System.getenv("TERM");
-        if ("dumb".equalsIgnoreCase(term)) return false;
-        return true;
+        return !"dumb".equalsIgnoreCase(term);
     }
 
     private static boolean detectUnicodeSupport() {
@@ -432,48 +466,66 @@ public final class RichConsole implements ScanProgressListener {
         try {
             String cols = System.getenv("COLUMNS");
             if (cols != null) return Integer.parseInt(cols.trim());
-        } catch (NumberFormatException ignored) {}
+        } catch (NumberFormatException ignored) {
+            // malformed COLUMNS — fall through to the default width
+        }
         return 100;
     }
 
     // ── Plain-text fallback ───────────────────────────────────────────────────
 
-    private void plainSummary(ScanResult result, int maxEvidence, MigrationTarget target) {
+    private void plainSummary(ScanResult result, int maxEvidence) {
         System.out.println("Artifact : " + result.artifact);
         System.out.println("Type     : " + result.artifactType);
         System.out.println("Scanned  : " + result.scannedAt);
         System.out.println();
+        plainTechnologies(result, maxEvidence);
+        plainWarnings(result);
+        plainMigration(result);
+        plainMtaSuggestions(result);
+    }
+
+    private void plainTechnologies(ScanResult result, int maxEvidence) {
         if (result.technologies.isEmpty()) {
             System.out.println("No known technologies detected.");
-        } else {
-            System.out.println("Detected technologies:");
-            for (var tech : result.technologies) {
-                System.out.printf("- %-14s score=%-5d evidences=%d%n",
-                        tech.name, tech.score, tech.evidences.size());
-                int c = 0;
-                for (var ev : tech.evidences) {
-                    if (c++ >= maxEvidence) { System.out.println("  ..."); break; }
-                    System.out.println("  * " + ev);
+            return;
+        }
+        System.out.println("Detected technologies:");
+        for (var tech : result.technologies) {
+            System.out.printf("- %-14s score=%-5d evidences=%d%n",
+                    tech.name, tech.score, tech.evidences.size());
+            int c = 0;
+            for (var ev : tech.evidences) {
+                if (c++ >= maxEvidence) {
+                    System.out.println("  ...");
+                    break;
                 }
+                System.out.println("  * " + ev);
             }
         }
-        if (!result.warnings.isEmpty()) {
-            System.out.println("\nWarnings:");
-            result.warnings.forEach(w -> System.out.println("  ! " + w));
-        }
-        if (!result.migrationHints.isEmpty()) {
-            System.out.println("\nMigration analysis:");
-            result.migrationHints.forEach(h -> System.out.println("  >> " + h));
-        }
-        if (result.mtaSuggestions != null && !result.mtaSuggestions.isEmpty()) {
-            for (var s : result.mtaSuggestions) {
-                String typeTag = s.installationType != null ? " [" + s.installationType + "]" : "";
-                System.out.println("\nMTA command [" + s.mtaLabel + typeTag + "]:");
-                if (s.note != null)               System.out.println("  ! " + s.note);
-                if (!s.resolvedTargets.isEmpty()) System.out.println("  targets : " + String.join(", ", s.resolvedTargets));
-                if (!s.resolvedSources.isEmpty()) System.out.println("  sources : " + String.join(", ", s.resolvedSources));
-                for (String line : s.command.split("\n")) System.out.println("  " + line);
-            }
+    }
+
+    private void plainWarnings(ScanResult result) {
+        if (result.warnings.isEmpty()) return;
+        System.out.println("\nWarnings:");
+        result.warnings.forEach(w -> System.out.println("  ! " + w));
+    }
+
+    private void plainMigration(ScanResult result) {
+        if (result.migrationHints.isEmpty()) return;
+        System.out.println("\nMigration analysis:");
+        result.migrationHints.forEach(h -> System.out.println("  >> " + h));
+    }
+
+    private void plainMtaSuggestions(ScanResult result) {
+        if (result.mtaSuggestions == null || result.mtaSuggestions.isEmpty()) return;
+        for (var s : result.mtaSuggestions) {
+            String typeTag = s.installationType != null ? " [" + s.installationType + "]" : "";
+            System.out.println("\nMTA command [" + s.mtaLabel + typeTag + "]:");
+            if (s.note != null)               System.out.println("  ! " + s.note);
+            if (!s.resolvedTargets.isEmpty()) System.out.println("  targets : " + String.join(", ", s.resolvedTargets));
+            if (!s.resolvedSources.isEmpty()) System.out.println("  sources : " + String.join(", ", s.resolvedSources));
+            for (String line : s.command.split("\n")) System.out.println("  " + line);
         }
     }
 }
