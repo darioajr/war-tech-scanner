@@ -16,7 +16,6 @@
 package br.com.darioajr.wartechscanner;
 
 import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.SequencedMap;
 
 final class TechnologyCatalog {

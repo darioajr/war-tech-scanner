@@ -76,9 +76,14 @@ public final class RichConsole implements ScanProgressListener {
     private Thread spinnerThread;
 
     public RichConsole() {
-        boolean hasAnsi    = detectAnsiSupport();
-        boolean hasUnicode = detectUnicodeSupport();
+        this(detectAnsiSupport(), detectUnicodeSupport());
+    }
 
+    /**
+     * Capability-injected constructor. Package-private so tests can force any
+     * rendering mode regardless of the host terminal.
+     */
+    RichConsole(boolean hasAnsi, boolean hasUnicode) {
         if (hasAnsi && hasUnicode) {
             mode = Mode.RICH;
             ch   = Chars.unicode();

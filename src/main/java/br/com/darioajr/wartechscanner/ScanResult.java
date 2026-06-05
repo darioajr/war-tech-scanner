@@ -19,7 +19,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SequencedCollection;
-import java.util.Collections;
 
 public final class ScanResult {
     public String artifact;
