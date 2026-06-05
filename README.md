@@ -330,4 +330,5 @@ This project is distributed under the **Apache License 2.0**. See [LICENSE](LICE
 Third-party dependencies and their licenses are listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
 
 Dependency license compliance is monitored by [FOSSA](https://fossa.com):
+
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdarioajr%2Fwar-tech-scanner.svg?type=large&issueType=license)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdarioajr%2Fwar-tech-scanner?ref=badge_large&issueType=license)
