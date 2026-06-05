@@ -100,6 +100,7 @@ public final class ArchiveScanner {
 
             var processed = new AtomicInteger(0);
             List<Future<?>> futures = new ArrayList<>();
+            var ctx = new ScanContext(result, techs, lim);
 
             for (var entry : entries) {
                 if (entry.isDirectory()) continue;
@@ -107,29 +108,31 @@ public final class ArchiveScanner {
                 var name = prefix + entry.getName();
                 inspectEntryName(name, result, techs);
                 listener.onProgress(name, processed.incrementAndGet(), total);
-                submitEntry(zip, entry, name, result, techs, lim, executor, futures);
+                submitEntry(zip, entry, name, ctx, executor, futures);
             }
 
             awaitAll(futures, result);
         }
     }
 
+    /** Shared per-scan state threaded through the concurrent inspection tasks. */
+    private record ScanContext(ScanResult result, Map<String, DetectedTechnology> techs, Limits lim) {}
+
     /** Submits the inspection task for a single non-directory entry. */
-    private void submitEntry(ZipFile zip, ZipEntry entry, String name,
-                             ScanResult result, Map<String, DetectedTechnology> techs, Limits lim,
+    private void submitEntry(ZipFile zip, ZipEntry entry, String name, ScanContext ctx,
                              ExecutorService executor, List<Future<?>> futures) throws IOException {
         if (name.endsWith(".class")) {
-            var bytes = readBounded(zip.getInputStream(entry), lim);
-            futures.add(executor.submit(() -> inspectClass(name, bytes, result, techs)));
+            var bytes = readBounded(zip.getInputStream(entry), ctx.lim());
+            futures.add(executor.submit(() -> inspectClass(name, bytes, ctx.result(), ctx.techs())));
         } else if (scanNestedArchives && isArchive(name)) {
-            result.libraries.add(name);
+            ctx.result().libraries.add(name);
             listener.onNestedArchive(name);
-            var bytes = readBounded(zip.getInputStream(entry), lim);
+            var bytes = readBounded(zip.getInputStream(entry), ctx.lim());
             futures.add(executor.submit(() -> {
                 try {
-                    scanNestedArchive(bytes, name + "!", result, techs, lim);
+                    scanNestedArchive(bytes, name + "!", ctx.result(), ctx.techs(), ctx.lim());
                 } catch (Exception e) {
-                    result.warnings.add("Error processing nested archive " + name + ": " + e.getMessage());
+                    ctx.result().warnings.add("Error processing nested archive " + name + ": " + e.getMessage());
                 }
             }));
         }
