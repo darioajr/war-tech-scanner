@@ -5,7 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+<!-- RELEASES -->
+
+## [0.2.0] - 2026-06-05
+
+### Fixed
+- Sonar issues
+
+## [0.1.0] - 2026-06-05
 
 ### Added
 - Detection of Java EE / Jakarta EE technologies via bytecode (ASM), XML descriptors, and libraries
@@ -21,4 +28,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Fallback to static mappings when the binary/image is not available
 - `THIRD-PARTY-NOTICES.txt` generated automatically by the `license-maven-plugin`
 
-[Unreleased]: https://github.com/darioajr/war-tech-scanner/compare/HEAD...HEAD
+[0.2.0]: https://github.com/darioajr/war-tech-scanner/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/darioajr/war-tech-scanner/releases/tag/v0.1.0

@@ -1,0 +1,21 @@
+{
+  "template": "#{{CHANGELOG}}",
+  "categories": [
+    { "title": "### Added", "labels": ["feat"] },
+    { "title": "### Fixed", "labels": ["fix"] },
+    { "title": "### Changed", "labels": ["refactor", "perf"] },
+    { "title": "### Documentation", "labels": ["docs"] },
+    { "title": "### Build & CI", "labels": ["build", "ci"] },
+    { "title": "### Testing", "labels": ["test"] }
+  ],
+  "category_template": "#{{TITLE}}\n#{{CHANGELOG}}",
+  "pr_template": "- #{{TITLE}}",
+  "empty_content": "_No notable changes._",
+  "label_extractor": [
+    {
+      "pattern": "^(\\w+)(?:\\(([^)]+)\\))?(!)?:\\s.+",
+      "on_property": "title",
+      "target": "$1"
+    }
+  ]
+}

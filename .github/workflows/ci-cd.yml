@@ -119,18 +119,65 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
+      - name: Build changelog from commits
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        with:
+          mode: COMMIT
+          toTag: ${{ github.ref_name }}
+          configuration: .github/changelog-config.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update CHANGELOG.md on main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHANGELOG_BODY: ${{ steps.changelog.outputs.changelog }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          git config user.email "darioajr@gmail.com"
+          git config user.name "Dario Alves Junior"
+          git fetch origin main
+          git checkout -f -B main origin/main
+
+          # Build the new release section and insert it after the <!-- RELEASES --> anchor.
+          {
+            echo "## [${VERSION#v}] - $(date +%Y-%m-%d)"
+            echo
+            printf '%s\n' "$CHANGELOG_BODY"
+          } > /tmp/section.md
+
+          awk '
+            /<!-- RELEASES -->/ && !done {
+              print
+              print ""
+              while ((getline line < "/tmp/section.md") > 0) print line
+              done = 1
+              next
+            }
+            { print }
+          ' CHANGELOG.md > /tmp/CHANGELOG.md && mv /tmp/CHANGELOG.md CHANGELOG.md
+
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "CHANGELOG.md already up to date"
+          else
+            git add CHANGELOG.md
+            git commit -m "docs: update changelog for ${VERSION} [skip ci]"
+            git push origin main
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.changelog }}
           files: |
             target/*.jar
             target/*.pom
             target/*.asc
           draft: false
           prerelease: false
-          generate_release_notes: true
           make_latest: true
           fail_on_unmatched_files: false
           token: ${{ secrets.GITHUB_TOKEN }}
