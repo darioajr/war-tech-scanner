@@ -113,20 +113,24 @@ class RichConsoleTest {
         assertTrue(output().contains("No known technologies detected."));
     }
 
-    // NOTE: RICH/BASIC modes call AnsiConsole.systemInstall(), which writes to the real
-    // stdout file descriptor and bypasses the System.out capture. These tests therefore
-    // assert the rendering path runs without error (JaCoCo still records the coverage).
-
     @Test
     void richSummaryDrawsBoxAndBars() {
         var console = new RichConsole(true, true); // RICH (Unicode + ANSI)
-        assertDoesNotThrow(() -> console.printSummary(populatedResult(), 1, target()));
+        console.printSummary(populatedResult(), 1, target());
+
+        String out = output();
+        assertTrue(out.contains("EJB"));
+        assertTrue(out.contains("DETECTED TECHNOLOGIES"));
+        assertTrue(out.contains("WARNINGS"));
+        assertTrue(out.contains("MTA"));
     }
 
     @Test
     void basicSummaryUsesAsciiChars() {
         var console = new RichConsole(true, false); // BASIC (ANSI, ASCII chars)
-        assertDoesNotThrow(() -> console.printSummary(populatedResult(), 2, target()));
+        console.printSummary(populatedResult(), 2, target());
+
+        assertTrue(output().contains("EJB"));
     }
 
     @Test
@@ -136,7 +140,9 @@ class RichConsoleTest {
         empty.artifact = "/y.war";
         empty.artifactType = "WAR";
 
-        assertDoesNotThrow(() -> console.printSummary(empty, 5, target()));
+        console.printSummary(empty, 5, target());
+
+        assertTrue(output().contains("No known technology detected."));
     }
 
     @Test

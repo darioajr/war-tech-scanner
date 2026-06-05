@@ -67,6 +67,7 @@ public final class RichConsole implements ScanProgressListener {
     private final Mode mode;
     private final Chars ch;
     private final int termWidth;
+    private final boolean manageAnsi;
 
     // ── scan state (volatile: written by scan thread, read by render thread) ──
     private volatile int     processed;
@@ -76,22 +77,29 @@ public final class RichConsole implements ScanProgressListener {
     private Thread spinnerThread;
 
     public RichConsole() {
-        this(detectAnsiSupport(), detectUnicodeSupport());
+        this(detectAnsiSupport(), detectUnicodeSupport(), true);
     }
 
     /**
      * Capability-injected constructor. Package-private so tests can force any
-     * rendering mode regardless of the host terminal.
+     * rendering mode. Does NOT touch the global AnsiConsole, so test output goes
+     * through {@code System.out} (capturable) instead of the native stdout file
+     * descriptor — which would corrupt the Surefire fork channel.
      */
     RichConsole(boolean hasAnsi, boolean hasUnicode) {
+        this(hasAnsi, hasUnicode, false);
+    }
+
+    private RichConsole(boolean hasAnsi, boolean hasUnicode, boolean manageAnsi) {
+        this.manageAnsi = manageAnsi;
         if (hasAnsi && hasUnicode) {
             mode = Mode.RICH;
             ch   = Chars.unicode();
-            AnsiConsole.systemInstall();
+            if (manageAnsi) AnsiConsole.systemInstall();
         } else if (hasAnsi) {
             mode = Mode.BASIC;
             ch   = Chars.ascii();
-            AnsiConsole.systemInstall();
+            if (manageAnsi) AnsiConsole.systemInstall();
         } else {
             mode = Mode.PLAIN;
             ch   = Chars.ascii();
@@ -382,7 +390,7 @@ public final class RichConsole implements ScanProgressListener {
     }
 
     private void cleanup() {
-        if (mode != Mode.PLAIN) AnsiConsole.systemUninstall();
+        if (manageAnsi && mode != Mode.PLAIN) AnsiConsole.systemUninstall();
     }
 
     // ── Capability detection ─────────────────────────────────────────────────
