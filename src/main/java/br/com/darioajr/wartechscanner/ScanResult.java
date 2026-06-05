@@ -21,14 +21,16 @@ import java.util.List;
 import java.util.SequencedCollection;
 
 public final class ScanResult {
-    public String artifact;
-    public String artifactType;
-    public Instant scannedAt = Instant.now();
+    // Package-private mutable state (S1104): consumers live in this package and
+    // mutate these directly; the JSON mapper is configured for FIELD visibility.
+    String artifact;
+    String artifactType;
+    Instant scannedAt = Instant.now();
     public final List<DetectedTechnology> technologies = new ArrayList<>();
     public final SequencedCollection<String> descriptors = new ArrayList<>();
     public final SequencedCollection<String> libraries = new ArrayList<>();
     public final SequencedCollection<String> classesWithEvidence = new ArrayList<>();
     public final SequencedCollection<String> warnings = new ArrayList<>();
     public final SequencedCollection<String> migrationHints = new ArrayList<>();
-    public List<MtaSuggestion> mtaSuggestions;
+    List<MtaSuggestion> mtaSuggestions;
 }

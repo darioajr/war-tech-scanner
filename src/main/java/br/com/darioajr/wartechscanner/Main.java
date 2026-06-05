@@ -15,6 +15,8 @@
  */
 package br.com.darioajr.wartechscanner;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -86,6 +88,8 @@ public class Main implements Callable<Integer> {
                     .registerModule(new JavaTimeModule())
                     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
                     .enable(SerializationFeature.INDENT_OUTPUT);
+            // ScanResult fields are package-private (S1104) — serialize by field, not getters.
+            mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
             System.out.println(mapper.writeValueAsString(result));
             return result.technologies.isEmpty() ? 2 : 0;
         }

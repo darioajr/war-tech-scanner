@@ -16,61 +16,93 @@
 package br.com.darioajr.wartechscanner;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.SequencedMap;
 
 final class TechnologyCatalog {
     private TechnologyCatalog() {}
 
+    // ── technology names (single source of truth, avoids duplicated literals) ──
+    private static final String EJB       = "EJB";
+    private static final String JPA       = "JPA";
+    private static final String HIBERNATE = "Hibernate";
+    private static final String CDI       = "CDI";
+    private static final String JSF       = "JSF";
+    private static final String JAX_RS    = "JAX-RS";
+    private static final String JAX_WS    = "JAX-WS/SOAP";
+    private static final String SERVLET   = "Servlet";
+    private static final String SPRING    = "Spring";
+    private static final String STRUTS    = "Struts";
+
+    private static final String[] ALL_TECHNOLOGIES = {
+            EJB, JPA, HIBERNATE, CDI, JSF, JAX_RS, JAX_WS, SERVLET, SPRING, STRUTS
+    };
+
+    /** A technology matched when the inspected string contains any of its needles. */
+    private record Rule(String tech, List<String> needles) {}
+
+    private static final List<Rule> ANNOTATION_RULES = List.of(
+            new Rule(EJB,       List.of("javax/ejb/", "jakarta/ejb/")),
+            new Rule(JPA,       List.of("javax/persistence/", "jakarta/persistence/")),
+            new Rule(HIBERNATE, List.of("org/hibernate/")),
+            new Rule(CDI,       List.of("javax/inject/", "jakarta/inject/", "javax/enterprise/", "jakarta/enterprise/")),
+            new Rule(JSF,       List.of("javax/faces/", "jakarta/faces/")),
+            new Rule(JAX_RS,    List.of("javax/ws/rs/", "jakarta/ws/rs/")),
+            new Rule(JAX_WS,    List.of("javax/jws/", "jakarta/jws/", "javax/xml/ws/", "jakarta/xml/ws/")),
+            new Rule(SERVLET,   List.of("javax/servlet/", "jakarta/servlet/")),
+            new Rule(SPRING,    List.of("org/springframework/")),
+            new Rule(STRUTS,    List.of("org/apache/struts"))
+    );
+
+    private static final List<Rule> LIBRARY_RULES = List.of(
+            new Rule(HIBERNATE, List.of("hibernate-core", "hibernate-entitymanager")),
+            new Rule(EJB,       List.of("jakarta.ejb", "javax.ejb", "ejb-api")),
+            new Rule(JPA,       List.of("jakarta.persistence", "javax.persistence", "jpa-api")),
+            new Rule(CDI,       List.of("weld", "cdi-api", "jakarta.enterprise")),
+            new Rule(JSF,       List.of("jsf", "faces")),
+            new Rule(JAX_RS,    List.of("resteasy", "jersey", "jaxrs", "jax-rs")),
+            new Rule(JAX_WS,    List.of("cxf", "jaxws", "jax-ws", "axis")),
+            new Rule(SERVLET,   List.of("servlet-api", "jakarta.servlet")),
+            new Rule(SPRING,    List.of("spring-")),
+            new Rule(STRUTS,    List.of("struts"))
+    );
+
     static SequencedMap<String, DetectedTechnology> create() {
         var map = new LinkedHashMap<String, DetectedTechnology>();
-        for (var name : new String[]{
-                "EJB", "JPA", "Hibernate", "CDI", "JSF", "JAX-RS", "JAX-WS/SOAP", "Servlet", "Spring", "Struts"
-        }) {
+        for (var name : ALL_TECHNOLOGIES) {
             map.put(name, new DetectedTechnology(name));
         }
         return map;
     }
 
     static String techByAnnotation(String descOrType) {
-        var v = descOrType.replace('.', '/');
-        if (v.contains("javax/ejb/") || v.contains("jakarta/ejb/")) return "EJB";
-        if (v.contains("javax/persistence/") || v.contains("jakarta/persistence/")) return "JPA";
-        if (v.contains("org/hibernate/")) return "Hibernate";
-        if (v.contains("javax/inject/") || v.contains("jakarta/inject/")
-                || v.contains("javax/enterprise/") || v.contains("jakarta/enterprise/")) return "CDI";
-        if (v.contains("javax/faces/") || v.contains("jakarta/faces/")) return "JSF";
-        if (v.contains("javax/ws/rs/") || v.contains("jakarta/ws/rs/")) return "JAX-RS";
-        if (v.contains("javax/jws/") || v.contains("jakarta/jws/")
-                || v.contains("javax/xml/ws/") || v.contains("jakarta/xml/ws/")) return "JAX-WS/SOAP";
-        if (v.contains("javax/servlet/") || v.contains("jakarta/servlet/")) return "Servlet";
-        if (v.contains("org/springframework/")) return "Spring";
-        if (v.contains("org/apache/struts")) return "Struts";
+        return firstMatch(descOrType.replace('.', '/'), ANNOTATION_RULES);
+    }
+
+    static String techByLibrary(String fileName) {
+        return firstMatch(fileName, LIBRARY_RULES);
+    }
+
+    private static String firstMatch(String haystack, List<Rule> rules) {
+        for (var rule : rules) {
+            for (var needle : rule.needles()) {
+                if (haystack.contains(needle)) {
+                    return rule.tech();
+                }
+            }
+        }
         return null;
     }
 
     static String techByPath(String path) {
-        if (path.endsWith("ejb-jar.xml") || path.endsWith("jboss-ejb3.xml")) return "EJB";
-        if (path.endsWith("persistence.xml")) return "JPA";
-        if (path.endsWith("hibernate.cfg.xml") || path.endsWith(".hbm.xml")) return "Hibernate";
-        if (path.endsWith("beans.xml")) return "CDI";
-        if (path.endsWith("faces-config.xml") || path.endsWith(".xhtml")) return "JSF";
-        if (path.endsWith("web.xml")) return "Servlet";
-        if (path.endsWith("applicationcontext.xml") || path.contains("spring")) return "Spring";
-        if (path.endsWith("struts.xml")) return "Struts";
-        return null;
-    }
-
-    static String techByLibrary(String fileName) {
-        if (fileName.contains("hibernate-core") || fileName.contains("hibernate-entitymanager")) return "Hibernate";
-        if (fileName.contains("jakarta.ejb") || fileName.contains("javax.ejb") || fileName.contains("ejb-api")) return "EJB";
-        if (fileName.contains("jakarta.persistence") || fileName.contains("javax.persistence") || fileName.contains("jpa-api")) return "JPA";
-        if (fileName.contains("weld") || fileName.contains("cdi-api") || fileName.contains("jakarta.enterprise")) return "CDI";
-        if (fileName.contains("jsf") || fileName.contains("faces")) return "JSF";
-        if (fileName.contains("resteasy") || fileName.contains("jersey") || fileName.contains("jaxrs") || fileName.contains("jax-rs")) return "JAX-RS";
-        if (fileName.contains("cxf") || fileName.contains("jaxws") || fileName.contains("jax-ws") || fileName.contains("axis")) return "JAX-WS/SOAP";
-        if (fileName.contains("servlet-api") || fileName.contains("jakarta.servlet")) return "Servlet";
-        if (fileName.contains("spring-")) return "Spring";
-        if (fileName.contains("struts")) return "Struts";
+        if (path.endsWith("ejb-jar.xml") || path.endsWith("jboss-ejb3.xml")) return EJB;
+        if (path.endsWith("persistence.xml")) return JPA;
+        if (path.endsWith("hibernate.cfg.xml") || path.endsWith(".hbm.xml")) return HIBERNATE;
+        if (path.endsWith("beans.xml")) return CDI;
+        if (path.endsWith("faces-config.xml") || path.endsWith(".xhtml")) return JSF;
+        if (path.endsWith("web.xml")) return SERVLET;
+        if (path.endsWith("applicationcontext.xml") || path.contains("spring")) return SPRING;
+        if (path.endsWith("struts.xml")) return STRUTS;
         return null;
     }
 }
