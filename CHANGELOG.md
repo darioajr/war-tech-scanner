@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- RELEASES -->
 
+## [0.4.0] - 2026-06-06
+
+### Added
+
+- feat: add auto publish on sonatype
+- feat: add complexity, migration risk and vulnerability assessment
+
+### Changed
+
+- refactor: group archive-scan state into a ScanContext record
+
+### Documentation
+
+- docs: update changelog for v0.3.0 [skip ci]
+
+
+
 ## [0.3.0] - 2026-06-05
 
 ### Fixed
