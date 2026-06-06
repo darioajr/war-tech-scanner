@@ -77,14 +77,7 @@ public class Main implements Callable<Integer> {
 
         if (json) {
             var result = new ArchiveScanner(!noNested).scan(artifact);
-            result.technologies.sort(byScoreDesc());
-            if (target.hasEapVersion() || target.hasJavaVersion()) {
-                result.migrationHints.addAll(CompatibilityAdvisor.advise(result, target));
-            }
-            if (mtaConfig != null) {
-                var config = MtaConfig.load(mtaConfig);
-                result.mtaSuggestions = MtaCommandBuilder.buildAll(result, target, config);
-            }
+            enrich(result, target);
             var mapper = new ObjectMapper()
                     .registerModule(new JavaTimeModule())
                     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
@@ -97,16 +90,29 @@ public class Main implements Callable<Integer> {
 
         var console = new RichConsole();
         var result = new ArchiveScanner(!noNested, console).scan(artifact);
+        enrich(result, target);
+        console.printSummary(result, maxEvidence, target);
+        return result.technologies.isEmpty() ? 2 : 0;
+    }
+
+    /**
+     * Post-scan enrichment shared by the JSON and rich-console paths: sorts the
+     * technologies, runs complexity classification, vulnerable-library detection,
+     * migration hints, migration risk scoring, and MTA command suggestions.
+     */
+    private void enrich(ScanResult result, MigrationTarget target) throws java.io.IOException {
         result.technologies.sort(byScoreDesc());
+        result.complexity = ComplexityClassifier.classify(result);
+        result.vulnerabilities = VulnerabilityScanner.scan(result);
         if (target.hasEapVersion() || target.hasJavaVersion()) {
             result.migrationHints.addAll(CompatibilityAdvisor.advise(result, target));
+            result.migrationRisk = MigrationRiskScorer.score(
+                    result, target, result.complexity, result.vulnerabilities);
         }
         if (mtaConfig != null) {
             var config = MtaConfig.load(mtaConfig);
             result.mtaSuggestions = MtaCommandBuilder.buildAll(result, target, config);
         }
-        console.printSummary(result, maxEvidence, target);
-        return result.technologies.isEmpty() ? 2 : 0;
     }
 
     private static Comparator<DetectedTechnology> byScoreDesc() {

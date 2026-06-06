@@ -70,6 +70,10 @@ public final class RichConsole implements ScanProgressListener {
 
     private static final int PROGRESS_BAR_WIDTH = 32;
 
+    // Sub-item indents reused across the assessment/vulnerability sections.
+    private static final String INDENT       = "      ";       // rich box sub-item
+    private static final String PLAIN_INDENT = "      - ";      // plain-text sub-item
+
     // ── terminal capabilities ─────────────────────────────────────────────────
     private final Mode mode;
     private final Chars ch;
@@ -174,8 +178,10 @@ public final class RichConsole implements ScanProgressListener {
         printBoxTitle("WAR TECH SCANNER  -  RESULT", boxWidth, Color.CYAN);
         printBoxSep(boxWidth);
         printSummaryHeader(result, boxWidth);
+        printAssessment(result, boxWidth);
 
         if (result.technologies.isEmpty()) {
+            printVulnerabilities(result, boxWidth);
             printBoxSep(boxWidth);
             printBoxLine(ansi().fgYellow().a("  No known technology detected.").reset().toString(), boxWidth);
             printBoxBottom(boxWidth);
@@ -185,6 +191,7 @@ public final class RichConsole implements ScanProgressListener {
 
         printBarChart(result, maxEvidence, boxWidth);
         printWarnings(result, boxWidth);
+        printVulnerabilities(result, boxWidth);
         printMigration(result, target, boxWidth);
         printMtaSuggestions(result, boxWidth);
 
@@ -199,6 +206,71 @@ public final class RichConsole implements ScanProgressListener {
         printBoxLine("  Classes  :  " + result.classesWithEvidence.size()
                 + "   Descriptors: " + result.descriptors.size()
                 + "   Libs: " + result.libraries.size(), boxWidth);
+    }
+
+    private void printAssessment(ScanResult result, int boxWidth) {
+        if (result.complexity == null && result.migrationRisk == null) return;
+        printBoxSep(boxWidth);
+        printBoxTitle("ASSESSMENT", boxWidth, Color.CYAN);
+        printBoxSep(boxWidth);
+
+        if (result.complexity != null) {
+            var c = result.complexity;
+            printBoxLine("  " + ansi().bold().a("Complexity   : ").reset()
+                    + ansi().fg(levelColor(c.level().name())).bold()
+                        .a("%-10s".formatted(c.level())).reset()
+                    + ansi().fgBrightBlack().a(" (%d/100)".formatted(c.score())).reset(), boxWidth);
+            for (var f : c.factors()) {
+                printBoxLine(ansi().fgBrightBlack().a(INDENT + ch.bullet() + " "
+                        + truncate(f, boxWidth - 12)).reset().toString(), boxWidth);
+            }
+        }
+        if (result.migrationRisk != null) {
+            var r = result.migrationRisk;
+            printBoxLine("  " + ansi().bold().a("Migration risk: ").reset()
+                    + ansi().fg(levelColor(r.level().name())).bold()
+                        .a("%-10s".formatted(r.level())).reset()
+                    + ansi().fgBrightBlack().a(" (%d/100)".formatted(r.score())).reset(), boxWidth);
+            for (var f : r.factors()) {
+                printBoxLine(ansi().fgBrightBlack().a(INDENT + ch.bullet() + " "
+                        + truncate(f, boxWidth - 12)).reset().toString(), boxWidth);
+            }
+        }
+    }
+
+    private void printVulnerabilities(ScanResult result, int boxWidth) {
+        if (result.vulnerabilities == null || result.vulnerabilities.isEmpty()) return;
+        printBoxSep(boxWidth);
+        printBoxTitle("VULNERABLE LIBRARIES (" + result.vulnerabilities.size() + ")", boxWidth, Color.RED);
+        printBoxSep(boxWidth);
+        for (var v : result.vulnerabilities) {
+            Color sev = severityColor(v.severity());
+            printBoxLine("  " + ansi().fg(sev).bold().a("[%-8s]".formatted(v.severity())).reset()
+                    + " " + ansi().bold().a(v.artifact() + " " + v.version()).reset()
+                    + ansi().fgBrightBlack().a("  " + v.cve()).reset(), boxWidth);
+            printBoxLine(ansi().fgBrightBlack().a(INDENT + ch.bullet() + " "
+                    + truncate(v.description(), boxWidth - 12)).reset().toString(), boxWidth);
+            printBoxLine(ansi().fgBrightBlack().a(INDENT + ch.bullet() + " fixed in: "
+                    + truncate(v.fixedIn(), boxWidth - 24)).reset().toString(), boxWidth);
+        }
+    }
+
+    private static Color levelColor(String level) {
+        return switch (level) {
+            case "VERY_HIGH", "CRITICAL" -> Color.RED;
+            case "HIGH" -> Color.YELLOW;
+            case "MODERATE" -> Color.MAGENTA;
+            default -> Color.GREEN;
+        };
+    }
+
+    private static Color severityColor(Severity s) {
+        return switch (s) {
+            case CRITICAL -> Color.RED;
+            case HIGH -> Color.YELLOW;
+            case MEDIUM -> Color.MAGENTA;
+            case LOW -> Color.GREEN;
+        };
     }
 
     private void printBarChart(ScanResult result, int maxEvidence, int boxWidth) {
@@ -479,10 +551,39 @@ public final class RichConsole implements ScanProgressListener {
         System.out.println("Type     : " + result.artifactType);
         System.out.println("Scanned  : " + result.scannedAt);
         System.out.println();
+        plainAssessment(result);
         plainTechnologies(result, maxEvidence);
         plainWarnings(result);
+        plainVulnerabilities(result);
         plainMigration(result);
         plainMtaSuggestions(result);
+    }
+
+    private void plainAssessment(ScanResult result) {
+        if (result.complexity == null && result.migrationRisk == null) return;
+        System.out.println("Assessment:");
+        if (result.complexity != null) {
+            var c = result.complexity;
+            System.out.printf("  Complexity    : %s (%d/100)%n", c.level(), c.score());
+            c.factors().forEach(f -> System.out.println(PLAIN_INDENT + f));
+        }
+        if (result.migrationRisk != null) {
+            var r = result.migrationRisk;
+            System.out.printf("  Migration risk: %s (%d/100)%n", r.level(), r.score());
+            r.factors().forEach(f -> System.out.println(PLAIN_INDENT + f));
+        }
+        System.out.println();
+    }
+
+    private void plainVulnerabilities(ScanResult result) {
+        if (result.vulnerabilities == null || result.vulnerabilities.isEmpty()) return;
+        System.out.println("\nVulnerable libraries (" + result.vulnerabilities.size() + "):");
+        for (var v : result.vulnerabilities) {
+            System.out.printf("  [%s] %s %s  %s%n",
+                    v.severity(), v.artifact(), v.version(), v.cve());
+            System.out.println(PLAIN_INDENT + v.description());
+            System.out.println(PLAIN_INDENT + "fixed in: " + v.fixedIn());
+        }
     }
 
     private void plainTechnologies(ScanResult result, int maxEvidence) {

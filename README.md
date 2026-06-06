@@ -31,6 +31,30 @@ Detection uses three layers:
 2. **XML descriptors** — `persistence.xml`, `ejb-jar.xml`, `hibernate.cfg.xml`, `*.hbm.xml`, `beans.xml`, `faces-config.xml`, `web.xml`, etc.
 3. **Libraries** — JAR names inside `WEB-INF/lib` and nested archives.
 
+## Assessment
+
+Beyond the technology inventory, every scan also produces:
+
+- **Automatic complexity classification** — a `LOW` / `MODERATE` / `HIGH` / `VERY_HIGH`
+  level plus a 0-100 index, derived from the breadth of detected technologies, the
+  volume of bytecode and descriptors, the dependency-set size, and the presence of
+  heavy frameworks (EJB, Struts, JAX-WS). Each contributing factor is listed.
+- **Migration risk score** — a 0-100 index (`LOW` → `CRITICAL`) emitted when a
+  `--target-eap` and/or `--target-java` is given. It combines intrinsic complexity,
+  the `javax.* → jakarta.*` namespace break (EAP 8+), per-technology migration effort,
+  the Java-version jump, and vulnerable-dependency severity.
+- **Vulnerable library identification** — a heuristic, filename + version match of
+  `WEB-INF/lib` (and nested) JARs against a curated catalog of high-impact CVEs
+  (Log4Shell, Spring4Shell, Text4Shell, Struts 2 RCE, common deserialization gadgets).
+  Each finding reports the CVE id, severity, and first fixed version.
+
+> ⚠️ Vulnerability detection is advisory only (no checksum/SBOM lookup). Confirm
+> against an authoritative source such as the GitHub Advisory Database or OWASP
+> Dependency-Check before acting.
+
+These appear in the rich/plain console output and under the `complexity`,
+`migrationRisk`, and `vulnerabilities` keys of the `--json` output.
+
 ## Prerequisites
 
 - Java 21+

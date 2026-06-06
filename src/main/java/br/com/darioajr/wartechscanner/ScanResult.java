@@ -33,4 +33,9 @@ public final class ScanResult {
     public final SequencedCollection<String> warnings = new ArrayList<>();
     public final SequencedCollection<String> migrationHints = new ArrayList<>();
     List<MtaSuggestion> mtaSuggestions;
+
+    // Assessment outputs (populated after the raw scan, before rendering).
+    ComplexityAssessment complexity;
+    List<VulnerableLibrary> vulnerabilities = new ArrayList<>();
+    MigrationRiskAssessment migrationRisk;
 }
